@@ -13,7 +13,7 @@ func TestMarshallMessage(t *testing.T) {
 		input    Message
 	}{
 		{
-			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"message_type":3}`,
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"message_type":2}`,
 			Message{
 				Inner: &UserMessage{
 					Timestamp: timestamp,
@@ -70,7 +70,7 @@ func TestUnmarshallMessage(t *testing.T) {
 				},
 				MessageType: UserMsg,
 			},
-			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"message_type":3}`,
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"message_type":2}`,
 		},
 		{
 			Message{

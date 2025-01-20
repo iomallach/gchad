@@ -11,7 +11,6 @@ type MessageType int
 const (
 	SystemUserJoined MessageType = iota
 	SystemUserLeft
-	SystemWhoIsInTheRoom
 	UserMsg
 )
 
