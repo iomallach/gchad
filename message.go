@@ -41,17 +41,27 @@ type UserMessage struct {
 func (u *UserMessage) MessageMark() {}
 
 type Message struct {
-	Inner       Messager
-	MessageType MessageType
+	Inner       Messager    `json:"inner"`
+	MessageType MessageType `json:"message_type"`
 }
 
 func (m *Message) MarshalJSON() ([]byte, error) {
+	var innerJson json.RawMessage
+	var err error
+
+	if m.Inner != nil {
+		innerJson, err = json.Marshal(m.Inner)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return json.Marshal(
 		struct {
-			Inner       interface{} `json:"inner"`
-			MessageType MessageType `json:"message_type"`
+			Inner       json.RawMessage `json:"inner"`
+			MessageType MessageType     `json:"message_type"`
 		}{
-			Inner:       m.Inner,
+			Inner:       innerJson,
 			MessageType: m.MessageType,
 		},
 	)
@@ -59,8 +69,8 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 
 func (m *Message) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Inner       json.RawMessage `json:"Inner"`
-		MessageType MessageType     `json:"MessageType"`
+		Inner       json.RawMessage `json:"inner"`
+		MessageType MessageType     `json:"message_type"`
 	}
 
 	if err := json.Unmarshal(data, &raw); err != nil {

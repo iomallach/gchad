@@ -13,7 +13,7 @@ func TestMarshallMessage(t *testing.T) {
 		input    Message
 	}{
 		{
-			`{"Inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"MessageType":3}`,
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"message_type":3}`,
 			Message{
 				Inner: &UserMessage{
 					Timestamp: timestamp,
@@ -23,7 +23,7 @@ func TestMarshallMessage(t *testing.T) {
 			},
 		},
 		{
-			`{"Inner":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"},"MessageType":0}`,
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"},"message_type":0}`,
 			Message{
 				Inner: &UserJoinedSystemMessage{
 					Timestamp: timestamp,
@@ -33,7 +33,7 @@ func TestMarshallMessage(t *testing.T) {
 			},
 		},
 		{
-			`{"Inner":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"},"MessageType":1}`,
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"},"message_type":1}`,
 			Message{
 				Inner: &UserLeftSystemMessage{
 					Timestamp: timestamp,
@@ -70,7 +70,27 @@ func TestUnmarshallMessage(t *testing.T) {
 				},
 				MessageType: UserMsg,
 			},
-			`{"Inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"MessageType":3}`,
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"},"message_type":3}`,
+		},
+		{
+			Message{
+				Inner: &UserJoinedSystemMessage{
+					Timestamp: timestamp,
+					Name:      "John Doe",
+				},
+				MessageType: SystemUserJoined,
+			},
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"},"message_type":0}`,
+		},
+		{
+			Message{
+				Inner: &UserLeftSystemMessage{
+					Timestamp: timestamp,
+					Name:      "John Doe",
+				},
+				MessageType: SystemUserLeft,
+			},
+			`{"inner":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"},"message_type":1}`,
 		},
 	}
 
@@ -78,14 +98,14 @@ func TestUnmarshallMessage(t *testing.T) {
 		var unmarshalled Message
 		err := json.Unmarshal([]byte(testCase.input), &unmarshalled)
 		if err != nil {
-			t.Error("Failed to unmarshal message:", err)
+			t.Fatalf("Failed to unmarshal message:")
 		}
 
 		switch expected := testCase.expected.Inner.(type) {
 		case *UserMessage:
 			unmarshalledInner, ok := unmarshalled.Inner.(*UserMessage)
 			if !ok {
-				t.Errorf("Expected inner message to be of type *UserMessage, got %T", unmarshalled.Inner)
+				t.Fatalf("Expected inner message to be of type *UserMessage, got %T", unmarshalled.Inner)
 			}
 			if unmarshalledInner.Timestamp != expected.Timestamp {
 				t.Errorf("Expected timestamp to be %s, got %s", expected.Timestamp, unmarshalledInner.Timestamp)
