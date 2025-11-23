@@ -2,14 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/iomallach/gchad"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -44,22 +45,22 @@ func (client *Client) readLoop() {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.Error().Err(err).Str("client_id", client.id).Msg("unexpected websocket close")
 			}
 			break
 		}
 
 		messager, err := gchad.UnmarshalMessage(message)
 		if err != nil {
-			log.Printf("Error unmarshalling message: %s", err.Error())
+			log.Error().Err(err).Str("client_id", client.id).Msg("failed to unmarshal message")
 			continue
 		}
 
-		log.Printf("Received message of type: %s", messager.MessageType())
+		log.Debug().Str("client_id", client.id).Str("type", string(messager.MessageType())).Msg("received message")
 
 		message_data, err := json.Marshal(messager)
 		if err != nil {
-			log.Printf("Error marshalling message data: %s", err.Error())
+			log.Error().Err(err).Str("client_id", client.id).Msg("failed to marshal message data")
 		}
 		broadcast_message := gchad.Message{
 			MessageType: messager.MessageType(),
@@ -81,25 +82,24 @@ func (client *Client) writeLoop() {
 		select {
 		case message, ok := <-client.send:
 			if !ok {
-				// The hub closed the channel
 				_ = client.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
-			log.Println("[Write loop] Client: ", client.id, ", sending message of type:", message.MessageType)
+			log.Debug().Str("client_id", client.id).Str("type", string(message.MessageType)).Msg("sending message")
 
 			json_message, err := json.Marshal(message)
 			if err != nil {
-				fmt.Printf("Error marshalling a message at client %s", client.id)
+				log.Error().Err(err).Str("client_id", client.id).Msg("failed to marshal message")
 			}
 
 			err = client.conn.WriteMessage(websocket.TextMessage, json_message)
 			if err != nil {
-				fmt.Printf("Error writing a message at client %s", client.id)
+				log.Error().Err(err).Str("client_id", client.id).Msg("failed to write message")
 				continue
 			}
 
-			log.Println("Message sent")
+			log.Debug().Str("client_id", client.id).Msg("message sent")
 		case <-ticker.C:
 			_ = client.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
@@ -121,14 +121,14 @@ func (hub *Hub) run() {
 		select {
 		case client := <-hub.register:
 			hub.clients[client.id] = client
-			log.Println("Registered client: ", client.id)
+			log.Info().Str("client_id", client.id).Str("name", client.name).Int("total_clients", len(hub.clients)).Msg("client registered")
 
 			msg, err := json.Marshal(gchad.UserJoinedSystemMessage{
 				Timestamp: time.Now(),
 				Name:      client.name,
 			})
 			if err != nil {
-				log.Printf("Error marshalling user joined message")
+				log.Error().Err(err).Msg("failed to marshal user joined message")
 				continue
 			}
 			for _, client := range hub.clients {
@@ -141,13 +141,14 @@ func (hub *Hub) run() {
 			if _, ok := hub.clients[client.id]; ok {
 				delete(hub.clients, client.id)
 				close(client.send)
+				log.Info().Str("client_id", client.id).Str("name", client.name).Int("total_clients", len(hub.clients)).Msg("client unregistered")
 
 				msg, err := json.Marshal(gchad.UserLeftSystemMessage{
 					Timestamp: time.Now(),
 					Name:      client.name,
 				})
 				if err != nil {
-					log.Printf("Error marshalling user left message")
+					log.Error().Err(err).Msg("failed to marshal user left message")
 					continue
 				}
 				for _, client := range hub.clients {
@@ -158,7 +159,7 @@ func (hub *Hub) run() {
 				}
 			}
 		case message := <-hub.broadcast:
-			log.Println("Broadcasting message of type: ", message.MessageType)
+			log.Debug().Str("type", string(message.MessageType)).Int("recipients", len(hub.clients)).Msg("broadcasting message")
 			for _, client := range hub.clients {
 				client.send <- message
 			}
@@ -167,39 +168,42 @@ func (hub *Hub) run() {
 }
 
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	log.Println("Received new connection from: ", r.Host)
+	log.Debug().Str("remote_addr", r.RemoteAddr).Msg("new websocket connection")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Error().Err(err).Msg("failed to upgrade connection")
 		return
 	}
 
 	body := make([]byte, 256)
 	read_bytes, err := r.Body.Read(body)
 	if err != nil {
-		log.Printf("Failed to read body: %s", err.Error())
+		log.Error().Err(err).Msg("failed to read request body")
 	}
 
 	msg, err := gchad.UnmarshalMessage(body[:read_bytes])
 	if err != nil {
-		log.Printf("Failed to unmarshal message: %s", err.Error())
+		log.Error().Err(err).Msg("failed to unmarshal connect message")
 	}
 
 	connectMeMessage, ok := msg.(*gchad.ConnectMeMessage)
 	if !ok {
-		log.Printf("Failed to read connect me message")
+		log.Error().Msg("expected ConnectMeMessage, got different type")
 	} else {
 
 		client := &Client{hub: hub, conn: conn, send: make(chan *gchad.Message, 256), id: uuid.NewString(), name: connectMeMessage.Name}
 		hub.register <- client
 
-		log.Println("Spawning read/write loops")
+		log.Debug().Str("client_id", client.id).Str("name", client.name).Msg("starting client loops")
 		go client.readLoop()
 		go client.writeLoop()
 	}
 }
 
 func main() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+
 	hub := Hub{
 		broadcast:  make(chan *gchad.Message),
 		clients:    make(map[string]*Client),
@@ -207,15 +211,15 @@ func main() {
 		unregister: make(chan *Client),
 	}
 	go hub.run()
-	log.Println("Starting hub goroutine")
+	log.Info().Msg("hub started")
 
 	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(&hub, w, r)
 	})
 
-	log.Println("Starting server at localhost:8080")
+	log.Info().Str("addr", ":8080").Msg("server starting")
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		log.Fatal().Err(err).Msg("server failed")
 	}
 }
