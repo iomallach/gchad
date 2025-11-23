@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -27,7 +28,8 @@ type Client struct {
 	// TODO: probably shouldnt be the actual hub here, just the broadcast channel
 	hub  *Hub
 	conn *websocket.Conn
-	send chan []byte
+	// TODO: clients don't need the full Message with the type, the Messager interface should be well enough
+	send chan *gchad.Message
 	id   string
 }
 
@@ -37,7 +39,6 @@ func (client *Client) readLoop() {
 		client.conn.Close()
 	}()
 
-	var msg map[string]interface{}
 	for {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
@@ -46,13 +47,25 @@ func (client *Client) readLoop() {
 			}
 			break
 		}
-		err = json.Unmarshal(message, &msg)
-		if err != nil {
-			log.Println("Error unmarshalling message:", err)
-		}
-		log.Println("Received message:", string(message))
 
-		client.hub.broadcast <- msg
+		messager, err := gchad.UnmarshalMessage(message)
+		if err != nil {
+			log.Printf("Error unmarshalling message: %s", err.Error())
+			continue
+		}
+
+		log.Printf("Received message of type: %s", messager.MessageType())
+
+		message_data, err := json.Marshal(messager)
+		if err != nil {
+			log.Printf("Error marshalling message data: %s", err.Error())
+		}
+		broadcast_message := gchad.Message{
+			MessageType: messager.MessageType(),
+			Data:        message_data,
+		}
+
+		client.hub.broadcast <- &broadcast_message
 	}
 }
 
@@ -66,35 +79,25 @@ func (client *Client) writeLoop() {
 	for {
 		select {
 		case message, ok := <-client.send:
-			log.Println("[Write loop] Client: ", client.id, ", sending message:", string(message))
 			if !ok {
 				// The hub closed the channel
 				_ = client.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
-			writer, err := client.conn.NextWriter(websocket.TextMessage)
+			log.Println("[Write loop] Client: ", client.id, ", sending message of type:", message.MessageType)
+
+			json_message, err := json.Marshal(message)
 			if err != nil {
-				return
-			}
-			_, err = writer.Write(message)
-			if err != nil {
-				return
+				fmt.Printf("Error marshalling a message at client %s", client.id)
 			}
 
-			for i := 0; i < len(client.send); i++ {
-				_, err = writer.Write([]byte{'\n'})
-				if err != nil {
-					return
-				}
-				_, err = writer.Write(<-client.send)
-				if err != nil {
-					return
-				}
+			err = client.conn.WriteMessage(websocket.TextMessage, json_message)
+			if err != nil {
+				fmt.Printf("Error writing a message at client %s", client.id)
+				continue
 			}
-			if err := writer.Close(); err != nil {
-				return
-			}
+
 			log.Println("Message sent")
 		case <-ticker.C:
 			_ = client.conn.SetWriteDeadline(time.Now().Add(writeWait))
@@ -106,7 +109,7 @@ func (client *Client) writeLoop() {
 }
 
 type Hub struct {
-	broadcast  chan gchad.Message
+	broadcast  chan *gchad.Message
 	clients    map[string]*Client
 	register   chan *Client
 	unregister chan *Client
@@ -118,15 +121,43 @@ func (hub *Hub) run() {
 		case client := <-hub.register:
 			hub.clients[client.id] = client
 			log.Println("Registered client: ", client.id)
-			// TODO: notify all a client connected
+
+			msg, err := json.Marshal(gchad.UserJoinedSystemMessage{
+				Timestamp: time.Now(),
+				Name:      client.id,
+			})
+			if err != nil {
+				log.Printf("Error marshalling user joined message")
+				continue
+			}
+			for _, client := range hub.clients {
+				client.send <- &gchad.Message{
+					MessageType: gchad.SystemUserJoined,
+					Data:        msg,
+				}
+			}
 		case client := <-hub.unregister:
 			if _, ok := hub.clients[client.id]; ok {
 				delete(hub.clients, client.id)
 				close(client.send)
-				// TODO: notify all a client disconnected
+
+				msg, err := json.Marshal(gchad.UserLeftSystemMessage{
+					Timestamp: time.Now(),
+					Name:      client.id,
+				})
+				if err != nil {
+					log.Printf("Error marshalling user left message")
+					continue
+				}
+				for _, client := range hub.clients {
+					client.send <- &gchad.Message{
+						MessageType: gchad.SystemUserLeft,
+						Data:        msg,
+					}
+				}
 			}
 		case message := <-hub.broadcast:
-			log.Println("Broadcasting message: ", string(message))
+			log.Println("Broadcasting message of type: ", message.MessageType)
 			for _, client := range hub.clients {
 				client.send <- message
 			}
@@ -142,7 +173,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256), id: uuid.NewString()}
+	client := &Client{hub: hub, conn: conn, send: make(chan *gchad.Message, 256), id: uuid.NewString()}
 	hub.register <- client
 
 	log.Println("Spawning read/write loops")
@@ -152,7 +183,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	hub := Hub{
-		broadcast:  make(chan []byte),
+		broadcast:  make(chan *gchad.Message),
 		clients:    make(map[string]*Client),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
