@@ -6,16 +6,16 @@ import (
 	"time"
 )
 
-type MessageType int
+type MessageType string
 
 const (
-	SystemUserJoined MessageType = iota
-	SystemUserLeft
-	UserMsg
+	SystemUserJoined MessageType = "user_joined"
+	SystemUserLeft   MessageType = "user_left"
+	UserMsg                      = "user_message"
 )
 
 type Messager interface {
-	MessageMark()
+	MessageType() MessageType
 }
 
 type UserJoinedSystemMessage struct {
@@ -23,77 +23,69 @@ type UserJoinedSystemMessage struct {
 	Name      string    `json:"name"`
 }
 
-func (u *UserJoinedSystemMessage) MessageMark() {}
+func (m *UserJoinedSystemMessage) MessageType() MessageType {
+	return SystemUserJoined
+}
 
 type UserLeftSystemMessage struct {
 	Timestamp time.Time `json:"timestamp"`
 	Name      string    `json:"name"`
 }
 
-func (u *UserLeftSystemMessage) MessageMark() {}
+func (m *UserLeftSystemMessage) MessageType() MessageType {
+	return SystemUserLeft
+}
 
 type UserMessage struct {
 	Timestamp time.Time `json:"timestamp"`
 	Message   string    `json:"message"`
 }
 
-func (u *UserMessage) MessageMark() {}
+func (m *UserMessage) MessageType() MessageType {
+	return UserMsg
+}
 
 type Message struct {
-	Inner       Messager    `json:"inner"`
-	MessageType MessageType `json:"message_type"`
+	MessageType MessageType     `json:"type"`
+	Data        json.RawMessage `json:"data"`
 }
 
-func (m *Message) MarshalJSON() ([]byte, error) {
-	var innerJson json.RawMessage
-	var err error
+func UnmarshalMessage(data []byte) (Messager, error) {
+	var envelope Message
 
-	if m.Inner != nil {
-		innerJson, err = json.Marshal(m.Inner)
-		if err != nil {
-			return nil, err
-		}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		return nil, err
 	}
 
-	return json.Marshal(
-		struct {
-			Inner       json.RawMessage `json:"inner"`
-			MessageType MessageType     `json:"message_type"`
-		}{
-			Inner:       innerJson,
-			MessageType: m.MessageType,
-		},
-	)
-}
-
-func (m *Message) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Inner       json.RawMessage `json:"inner"`
-		MessageType MessageType     `json:"message_type"`
-	}
-
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-
-	m.MessageType = raw.MessageType
-
-	var inner Messager
-	switch raw.MessageType {
+	var msg Messager
+	switch envelope.MessageType {
 	case SystemUserJoined:
-		inner = &UserJoinedSystemMessage{}
+		msg = &UserJoinedSystemMessage{}
 	case SystemUserLeft:
-		inner = &UserLeftSystemMessage{}
+		msg = &UserLeftSystemMessage{}
 	case UserMsg:
-		inner = &UserMessage{}
+		msg = &UserMessage{}
 	default:
-		return fmt.Errorf("unknown message type: %d", raw.MessageType)
+		return nil, fmt.Errorf("unknown message type: %s", envelope.MessageType)
 	}
 
-	if err := json.Unmarshal(raw.Inner, inner); err != nil {
-		return err
+	if err := json.Unmarshal(envelope.Data, &msg); err != nil {
+		return nil, err
 	}
 
-	m.Inner = inner
-	return nil
+	return msg, nil
+}
+
+func MarshallMessage(data Messager) ([]byte, error) {
+	json_data, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	envelope := Message{
+		MessageType: data.MessageType(),
+		Data:        json_data,
+	}
+
+	return json.Marshal(envelope)
 }
