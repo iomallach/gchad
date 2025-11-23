@@ -12,10 +12,19 @@ const (
 	SystemUserJoined MessageType = "user_joined"
 	SystemUserLeft   MessageType = "user_left"
 	UserMsg                      = "user_message"
+	NewConnection    MessageType = "connect_me"
 )
 
 type Messager interface {
 	MessageType() MessageType
+}
+
+type ConnectMeMessage struct {
+	Name string `json:"name"`
+}
+
+func (m *ConnectMeMessage) MessageType() MessageType {
+	return NewConnection
 }
 
 type UserJoinedSystemMessage struct {
@@ -65,6 +74,8 @@ func UnmarshalMessage(data []byte) (Messager, error) {
 		msg = &UserLeftSystemMessage{}
 	case UserMsg:
 		msg = &UserMessage{}
+	case NewConnection:
+		msg = &ConnectMeMessage{}
 	default:
 		return nil, fmt.Errorf("unknown message type: %s", envelope.MessageType)
 	}

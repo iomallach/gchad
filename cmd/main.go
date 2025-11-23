@@ -31,6 +31,7 @@ type Client struct {
 	// TODO: clients don't need the full Message with the type, the Messager interface should be well enough
 	send chan *gchad.Message
 	id   string
+	name string
 }
 
 func (client *Client) readLoop() {
@@ -124,7 +125,7 @@ func (hub *Hub) run() {
 
 			msg, err := json.Marshal(gchad.UserJoinedSystemMessage{
 				Timestamp: time.Now(),
-				Name:      client.id,
+				Name:      client.name,
 			})
 			if err != nil {
 				log.Printf("Error marshalling user joined message")
@@ -143,7 +144,7 @@ func (hub *Hub) run() {
 
 				msg, err := json.Marshal(gchad.UserLeftSystemMessage{
 					Timestamp: time.Now(),
-					Name:      client.id,
+					Name:      client.name,
 				})
 				if err != nil {
 					log.Printf("Error marshalling user left message")
@@ -173,12 +174,29 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &Client{hub: hub, conn: conn, send: make(chan *gchad.Message, 256), id: uuid.NewString()}
-	hub.register <- client
+	body := make([]byte, 256)
+	read_bytes, err := r.Body.Read(body)
+	if err != nil {
+		log.Printf("Failed to read body: %s", err.Error())
+	}
 
-	log.Println("Spawning read/write loops")
-	go client.readLoop()
-	go client.writeLoop()
+	msg, err := gchad.UnmarshalMessage(body[:read_bytes])
+	if err != nil {
+		log.Printf("Failed to unmarshal message: %s", err.Error())
+	}
+
+	connectMeMessage, ok := msg.(*gchad.ConnectMeMessage)
+	if !ok {
+		log.Printf("Failed to read connect me message")
+	} else {
+
+		client := &Client{hub: hub, conn: conn, send: make(chan *gchad.Message, 256), id: uuid.NewString(), name: connectMeMessage.Name}
+		hub.register <- client
+
+		log.Println("Spawning read/write loops")
+		go client.readLoop()
+		go client.writeLoop()
+	}
 }
 
 func main() {
