@@ -1,20 +1,22 @@
-package gchad
+package gchad_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/iomallach/gchad"
 )
 
 func TestMarshallMessage(t *testing.T) {
 	timestamp := time.Time{}
 	testCases := []struct {
 		name     string
-		input    Messager
+		input    gchad.Messager
 		expected string
 	}{
 		{
 			name: "UserMessage",
-			input: &UserMessage{
+			input: &gchad.UserMessage{
 				Timestamp: timestamp,
 				Message:   "Hello world",
 			},
@@ -22,7 +24,7 @@ func TestMarshallMessage(t *testing.T) {
 		},
 		{
 			name: "UserJoinedSystemMessage",
-			input: &UserJoinedSystemMessage{
+			input: &gchad.UserJoinedSystemMessage{
 				Timestamp: timestamp,
 				Name:      "John Doe",
 			},
@@ -30,7 +32,7 @@ func TestMarshallMessage(t *testing.T) {
 		},
 		{
 			name: "UserLeftSystemMessage",
-			input: &UserLeftSystemMessage{
+			input: &gchad.UserLeftSystemMessage{
 				Timestamp: timestamp,
 				Name:      "John Doe",
 			},
@@ -40,7 +42,7 @@ func TestMarshallMessage(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			data, err := MarshallMessage(testCase.input)
+			data, err := gchad.MarshallMessage(testCase.input)
 			if err != nil {
 				t.Fatalf("Failed to marshal message: %v", err)
 			}
@@ -57,12 +59,12 @@ func TestUnmarshalMessage(t *testing.T) {
 	testCases := []struct {
 		name     string
 		input    string
-		expected Messager
+		expected gchad.Messager
 	}{
 		{
 			name:  "UserMessage",
 			input: `{"type":"user_message","data":{"timestamp":"0001-01-01T00:00:00Z","message":"Hello world"}}`,
-			expected: &UserMessage{
+			expected: &gchad.UserMessage{
 				Timestamp: timestamp,
 				Message:   "Hello world",
 			},
@@ -70,7 +72,7 @@ func TestUnmarshalMessage(t *testing.T) {
 		{
 			name:  "UserJoinedSystemMessage",
 			input: `{"type":"user_joined","data":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"}}`,
-			expected: &UserJoinedSystemMessage{
+			expected: &gchad.UserJoinedSystemMessage{
 				Timestamp: timestamp,
 				Name:      "John Doe",
 			},
@@ -78,7 +80,7 @@ func TestUnmarshalMessage(t *testing.T) {
 		{
 			name:  "UserLeftSystemMessage",
 			input: `{"type":"user_left","data":{"timestamp":"0001-01-01T00:00:00Z","name":"John Doe"}}`,
-			expected: &UserLeftSystemMessage{
+			expected: &gchad.UserLeftSystemMessage{
 				Timestamp: timestamp,
 				Name:      "John Doe",
 			},
@@ -87,7 +89,7 @@ func TestUnmarshalMessage(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			unmarshalled, err := UnmarshalMessage([]byte(testCase.input))
+			unmarshalled, err := gchad.UnmarshalMessage([]byte(testCase.input))
 			if err != nil {
 				t.Fatalf("Failed to unmarshal message: %v", err)
 			}
@@ -97,8 +99,8 @@ func TestUnmarshalMessage(t *testing.T) {
 			}
 
 			switch expected := testCase.expected.(type) {
-			case *UserMessage:
-				unmarshalledInner, ok := unmarshalled.(*UserMessage)
+			case *gchad.UserMessage:
+				unmarshalledInner, ok := unmarshalled.(*gchad.UserMessage)
 				if !ok {
 					t.Fatalf("Expected message to be of type *UserMessage, got %T", unmarshalled)
 				}
@@ -108,8 +110,8 @@ func TestUnmarshalMessage(t *testing.T) {
 				if unmarshalledInner.Message != expected.Message {
 					t.Errorf("Expected message to be %s, got %s", expected.Message, unmarshalledInner.Message)
 				}
-			case *UserJoinedSystemMessage:
-				unmarshalledInner, ok := unmarshalled.(*UserJoinedSystemMessage)
+			case *gchad.UserJoinedSystemMessage:
+				unmarshalledInner, ok := unmarshalled.(*gchad.UserJoinedSystemMessage)
 				if !ok {
 					t.Fatalf("Expected message to be of type *UserJoinedSystemMessage, got %T", unmarshalled)
 				}
@@ -119,8 +121,8 @@ func TestUnmarshalMessage(t *testing.T) {
 				if unmarshalledInner.Name != expected.Name {
 					t.Errorf("Expected name to be %s, got %s", expected.Name, unmarshalledInner.Name)
 				}
-			case *UserLeftSystemMessage:
-				unmarshalledInner, ok := unmarshalled.(*UserLeftSystemMessage)
+			case *gchad.UserLeftSystemMessage:
+				unmarshalledInner, ok := unmarshalled.(*gchad.UserLeftSystemMessage)
 				if !ok {
 					t.Fatalf("Expected message to be of type *UserLeftSystemMessage, got %T", unmarshalled)
 				}
