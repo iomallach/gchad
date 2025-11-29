@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -18,43 +19,66 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
+type UUIDMaker func() string
+
 var upgrader websocket.Upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-func serveWs(hub *gchad.Hub, w http.ResponseWriter, r *http.Request) {
+func serveWs(hub *gchad.Hub, w http.ResponseWriter, r *http.Request) error {
 	log.Debug().Str("remote_addr", r.RemoteAddr).Msg("new websocket connection")
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to upgrade connection")
-		return
+		return err
 	}
 
 	body := make([]byte, 256)
 	read_bytes, err := r.Body.Read(body)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to read request body")
+		return err
 	}
 
-	msg, err := gchad.UnmarshalMessage(body[:read_bytes])
+	message, err := mapConnectMeMessage(body[:read_bytes])
+	if err != nil {
+		return err
+	}
+	client := createClient(message, hub, conn, 256, func() string { return uuid.NewString() }, pingPeriod, writeWait)
+
+	lauchClient(hub, &client)
+
+	return nil
+}
+
+func mapConnectMeMessage(messageBody []byte) (*gchad.ConnectMeMessage, error) {
+	msg, err := gchad.UnmarshalMessage(messageBody)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to unmarshal connect message")
+		return nil, err
 	}
 
 	connectMeMessage, ok := msg.(*gchad.ConnectMeMessage)
 	if !ok {
 		log.Error().Msg("expected ConnectMeMessage, got different type")
-	} else {
-
-		client := gchad.NewClient(hub, conn, make(chan *gchad.Message, 256), uuid.NewString(), connectMeMessage.Name, pingPeriod, writeWait)
-		hub.ScheduleRegisterClient(&client)
-
-		log.Debug().Str("client_id", client.Id).Str("name", client.Name).Msg("starting client loops")
-		go client.ReadLoop()
-		go client.WriteLoop()
+		return nil, fmt.Errorf("could not convert interface to type")
 	}
+
+	return connectMeMessage, nil
+}
+
+func createClient(message *gchad.ConnectMeMessage, hub *gchad.Hub, conn gchad.Connection, sendChannelSize int, uuidMaker UUIDMaker, pingPeriod time.Duration, writePeriod time.Duration) gchad.Client {
+	return gchad.NewClient(hub, conn, make(chan *gchad.Message, sendChannelSize), uuidMaker(), message.Name, pingPeriod, writePeriod)
+}
+
+func lauchClient(hub *gchad.Hub, client *gchad.Client) {
+	hub.ScheduleRegisterClient(client)
+
+	log.Debug().Str("client_id", client.Id).Str("name", client.Name).Msg("starting client loops")
+	go client.ReadLoop()
+	go client.WriteLoop()
 }
 
 func main() {
@@ -68,7 +92,10 @@ func main() {
 	log.Info().Msg("hub started")
 
 	http.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
-		serveWs(&hub, w, r)
+		err := serveWs(&hub, w, r)
+		if err != nil {
+			log.Error().Err(err).Msg("couldn't serve websocket request, skipping")
+		}
 	})
 
 	log.Info().Str("addr", ":8080").Msg("server starting")
