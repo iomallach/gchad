@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -18,8 +17,6 @@ const (
 	pongWait   = 60 * time.Second
 	pingPeriod = (pongWait * 9) / 10
 )
-
-type UUIDMaker func() string
 
 var upgrader websocket.Upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -42,43 +39,15 @@ func serveWs(hub *gchad.Hub, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	message, err := mapConnectMeMessage(body[:read_bytes])
+	message, err := gchad.MapConnectMeMessage(body[:read_bytes])
 	if err != nil {
 		return err
 	}
-	client := createClient(message, hub, conn, 256, func() string { return uuid.NewString() }, pingPeriod, writeWait)
+	client := gchad.CreateClient(message, hub, conn, 256, func() string { return uuid.NewString() }, pingPeriod, writeWait)
 
-	lauchClient(hub, &client)
+	gchad.LauchClient(hub, &client)
 
 	return nil
-}
-
-func mapConnectMeMessage(messageBody []byte) (*gchad.ConnectMeMessage, error) {
-	msg, err := gchad.UnmarshalMessage(messageBody)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal connect message")
-		return nil, err
-	}
-
-	connectMeMessage, ok := msg.(*gchad.ConnectMeMessage)
-	if !ok {
-		log.Error().Msg("expected ConnectMeMessage, got different type")
-		return nil, fmt.Errorf("could not convert interface to type")
-	}
-
-	return connectMeMessage, nil
-}
-
-func createClient(message *gchad.ConnectMeMessage, hub *gchad.Hub, conn gchad.Connection, sendChannelSize int, uuidMaker UUIDMaker, pingPeriod time.Duration, writePeriod time.Duration) gchad.Client {
-	return gchad.NewClient(hub, conn, make(chan *gchad.Message, sendChannelSize), uuidMaker(), message.Name, pingPeriod, writePeriod)
-}
-
-func lauchClient(hub *gchad.Hub, client *gchad.Client) {
-	hub.ScheduleRegisterClient(client)
-
-	log.Debug().Str("client_id", client.Id).Str("name", client.Name).Msg("starting client loops")
-	go client.ReadLoop()
-	go client.WriteLoop()
 }
 
 func main() {
