@@ -15,10 +15,35 @@ type Connection interface {
 	SetWriteDeadline(time.Time) error
 }
 
+type HubNotifier interface {
+	UnregisterClient(client *Client)
+	SendToBroadcast(message *Message)
+}
+
+type ChannelHubNotifier struct {
+	unregister chan *Client
+	broadcast  chan *Message
+}
+
+func NewChannelHubNotifier(unregister chan *Client, broadcast chan *Message) *ChannelHubNotifier {
+	return &ChannelHubNotifier{
+		unregister,
+		broadcast,
+	}
+}
+
+func (notifier *ChannelHubNotifier) UnregisterClient(client *Client) {
+	notifier.unregister <- client
+}
+
+func (notifier *ChannelHubNotifier) SendToBroadcast(message *Message) {
+	notifier.broadcast <- message
+}
+
 type Client struct {
 	// TODO: probably shouldnt be the actual hub here, just the broadcast channel
-	hub  *Hub
-	conn Connection
+	notifier HubNotifier
+	conn     Connection
 	// TODO: clients don't need the full Message with the type, the Messager interface should be well enough
 	send       chan *Message
 	Id         string
@@ -27,9 +52,9 @@ type Client struct {
 	writeWait  time.Duration
 }
 
-func NewClient(hub *Hub, conn Connection, send chan *Message, id string, name string, pingPeriod time.Duration, writeWait time.Duration) Client {
+func NewClient(notifier HubNotifier, conn Connection, send chan *Message, id string, name string, pingPeriod time.Duration, writeWait time.Duration) Client {
 	return Client{
-		hub:        hub,
+		notifier:   notifier,
 		conn:       conn,
 		send:       send,
 		Id:         id,
@@ -41,16 +66,14 @@ func NewClient(hub *Hub, conn Connection, send chan *Message, id string, name st
 
 func (client *Client) ReadLoop() {
 	defer func() {
-		client.hub.unregister <- client
+		client.notifier.UnregisterClient(client)
 		client.conn.Close()
 	}()
 
 	for {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Error().Err(err).Str("client_id", client.Id).Msg("unexpected websocket close")
-			}
+			log.Error().Err(err).Str("client_id", client.Id).Msg("could not read message")
 			break
 		}
 
@@ -71,7 +94,7 @@ func (client *Client) ReadLoop() {
 			Data:        message_data,
 		}
 
-		client.hub.broadcast <- &broadcast_message
+		client.notifier.SendToBroadcast(&broadcast_message)
 	}
 }
 

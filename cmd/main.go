@@ -43,7 +43,8 @@ func serveWs(hub *gchad.Hub, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	client := gchad.CreateClient(message, hub, conn, 256, func() string { return uuid.NewString() }, pingPeriod, writeWait)
+	hubNotifier := gchad.NewChannelHubNotifier(hub.Unregister, hub.Broadcast)
+	client := gchad.CreateClient(message, hubNotifier, conn, 256, func() string { return uuid.NewString() }, pingPeriod, writeWait)
 
 	gchad.LauchClient(hub, &client)
 

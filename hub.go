@@ -10,10 +10,10 @@ import (
 type (
 	TimeFunc func() time.Time
 	Hub      struct {
-		broadcast  chan *Message
+		Broadcast  chan *Message
 		clients    map[string]*Client
 		register   chan *Client
-		unregister chan *Client
+		Unregister chan *Client
 		timeFunc   TimeFunc
 	}
 )
@@ -39,7 +39,7 @@ func (hub *Hub) Run() {
 					Data:        msg,
 				}
 			}
-		case client := <-hub.unregister:
+		case client := <-hub.Unregister:
 			if _, ok := hub.clients[client.Id]; ok {
 				delete(hub.clients, client.Id)
 				close(client.send)
@@ -60,7 +60,7 @@ func (hub *Hub) Run() {
 					}
 				}
 			}
-		case message := <-hub.broadcast:
+		case message := <-hub.Broadcast:
 			log.Debug().Str("type", string(message.MessageType)).Int("recipients", len(hub.clients)).Msg("broadcasting message")
 			for _, client := range hub.clients {
 				client.send <- message
@@ -75,10 +75,10 @@ func (hub *Hub) ScheduleRegisterClient(client *Client) {
 
 func NewHub(broadcast chan *Message, register chan *Client, unregister chan *Client, timeFunc TimeFunc) Hub {
 	return Hub{
-		broadcast:  broadcast,
+		Broadcast:  broadcast,
 		clients:    make(map[string]*Client),
 		register:   register,
-		unregister: unregister,
+		Unregister: unregister,
 		timeFunc:   timeFunc,
 	}
 }

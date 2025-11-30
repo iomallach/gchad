@@ -25,7 +25,7 @@ func MapConnectMeMessage(messageBody []byte) (*ConnectMeMessage, error) {
 	return connectMeMessage, nil
 }
 
-func CreateClient(message *ConnectMeMessage, hub *Hub, conn Connection, sendChannelSize int, uuidMaker UUIDMaker, pingPeriod time.Duration, writePeriod time.Duration) Client {
+func CreateClient(message *ConnectMeMessage, hub HubNotifier, conn Connection, sendChannelSize int, uuidMaker UUIDMaker, pingPeriod time.Duration, writePeriod time.Duration) Client {
 	return NewClient(hub, conn, make(chan *Message, sendChannelSize), uuidMaker(), message.Name, pingPeriod, writePeriod)
 }
 
