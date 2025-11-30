@@ -32,6 +32,13 @@ type UserJoinedSystemMessage struct {
 	Name      string    `json:"name"`
 }
 
+func NewUserJoinedSystemMessage(name string, timestamp time.Time) *UserJoinedSystemMessage {
+	return &UserJoinedSystemMessage{
+		Timestamp: timestamp,
+		Name:      name,
+	}
+}
+
 func (m *UserJoinedSystemMessage) MessageType() MessageType {
 	return SystemUserJoined
 }
@@ -41,6 +48,13 @@ type UserLeftSystemMessage struct {
 	Name      string    `json:"name"`
 }
 
+func NewUserLeftSystemMessage(name string, timestamp time.Time) *UserLeftSystemMessage {
+	return &UserLeftSystemMessage{
+		Timestamp: timestamp,
+		Name:      name,
+	}
+}
+
 func (m *UserLeftSystemMessage) MessageType() MessageType {
 	return SystemUserLeft
 }
@@ -48,6 +62,13 @@ func (m *UserLeftSystemMessage) MessageType() MessageType {
 type UserMessage struct {
 	Timestamp time.Time `json:"timestamp"`
 	Message   string    `json:"message"`
+}
+
+func NewUserMessage(msg string, timestamp time.Time) *UserMessage {
+	return &UserMessage{
+		Timestamp: timestamp,
+		Message:   msg,
+	}
 }
 
 func (m *UserMessage) MessageType() MessageType {

@@ -16,8 +16,8 @@ func (r *ClientRegistry) AddClient(client *domain.Client) {
 	r.clients[client.Id()] = client
 }
 
-func (r *ClientRegistry) RemoveClient(client *domain.Client) {
-	delete(r.clients, client.Id())
+func (r *ClientRegistry) RemoveClient(clientId string) {
+	delete(r.clients, clientId)
 }
 
 func (r *ClientRegistry) GetAllClients() []*domain.Client {
@@ -28,4 +28,8 @@ func (r *ClientRegistry) GetAllClients() []*domain.Client {
 	}
 
 	return clients
+}
+
+func (r *ClientRegistry) GetClient(clientId string) *domain.Client {
+	return r.clients[clientId]
 }

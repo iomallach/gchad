@@ -30,18 +30,24 @@ func (cr *ChatRoom) Name() string {
 	return cr.name
 }
 
-func (cr *ChatRoom) LetClientIn(client *domain.Client) {
+func (cr *ChatRoom) LetClientIn(client *domain.Client) *domain.UserJoinedRoom {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 
 	cr.clients.AddClient(client)
+
+	return domain.NewUserJoinedRoomEvent(client.Name())
 }
 
-func (cr *ChatRoom) LetClientOut(client *domain.Client) {
+func (cr *ChatRoom) LetClientOut(clientId string) *domain.UserLeftRoom {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 
-	cr.clients.RemoveClient(client)
+	// TODO: null pointer exception danger
+	client := cr.clients.GetClient(clientId)
+	cr.clients.RemoveClient(clientId)
+
+	return domain.NewUserLeftRoomEvent(client.Name())
 }
 
 func (cr *ChatRoom) GetClients() []*domain.Client {

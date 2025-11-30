@@ -1,4 +1,4 @@
-package infrastructure
+package application
 
 import "github.com/google/uuid"
 

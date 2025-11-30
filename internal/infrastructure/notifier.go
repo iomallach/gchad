@@ -8,7 +8,7 @@ import (
 )
 
 type Notifier interface {
-	BroadcastToRoom(*application.ChatRoom, domain.Messager) error
+	application.Notifier
 	RegisterClient(*ClientAdapter)
 	UnregisterClient(string)
 }
@@ -16,19 +16,21 @@ type Notifier interface {
 type ClientNotifier struct {
 	mu      sync.RWMutex
 	clients map[string]*ClientAdapter
+	logger  Logger
 }
 
-func NewClientNotifier() *ClientNotifier {
+func NewClientNotifier(logger Logger) *ClientNotifier {
 	return &ClientNotifier{
 		mu:      sync.RWMutex{},
 		clients: make(map[string]*ClientAdapter),
+		logger:  logger,
 	}
 }
 
 func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.Messager) error {
 	message, err := domain.MarshallMessage(msg)
 	if err != nil {
-		// TODO: log error
+		n.logger.Error().Err(err).Msg("failed to serialize a message")
 		return err
 	}
 	n.mu.RLock()
@@ -37,12 +39,13 @@ func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.
 	for _, client := range room.GetClients() {
 		if adapter, ok := n.clients[client.Id()]; ok {
 			select {
-			// TODO: need to send the actual message here
 			case adapter.send <- message:
+				n.logger.Debug().Str("client_id", client.Id()).Str("message_type", string(msg.MessageType())).Msg("message queued for client")
 			default:
+				n.logger.Error().Str("client_id", client.Id()).Msg("failed to queue message, channel is full or closed")
 			}
 		} else {
-			// TODO: need to log this
+			n.logger.Debug().Str("client_id", client.Id()).Msg("attempted to broadcast to client that doesn't exist")
 		}
 	}
 
