@@ -1,6 +1,10 @@
 package application
 
-import "github.com/iomallach/gchad/internal/domain"
+import (
+	"context"
+
+	"github.com/iomallach/gchad/internal/domain"
+)
 
 type Notifier interface {
 	BroadcastToRoom(*ChatRoom, domain.Messager) error
@@ -22,8 +26,8 @@ func NewChatService(room *ChatRoom, notifier Notifier, clock ClockGen, eventsCha
 	}
 }
 
-func (cs *ChatService) Start() {
-	go cs.handleEvents()
+func (cs *ChatService) Start(ctx context.Context) {
+	go cs.handleEvents(ctx)
 }
 
 func (cs *ChatService) EnterRoom(clientId string, clientName string) {
@@ -52,7 +56,7 @@ func (cs *ChatService) SendMessage(clientId string, msg string) error {
 	return cs.notifier.BroadcastToRoom(cs.room, userMessage)
 }
 
-func (cs *ChatService) handleEvents() {
+func (cs *ChatService) handleEvents(ctx context.Context) {
 	for {
 		select {
 		case event := <-cs.events:
@@ -68,7 +72,8 @@ func (cs *ChatService) handleEvents() {
 					// TODO: log error
 				}
 			}
-		default:
+		case <-ctx.Done():
+			return
 		}
 	}
 }
