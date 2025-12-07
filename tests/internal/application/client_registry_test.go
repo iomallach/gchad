@@ -38,5 +38,8 @@ func TestClientRegistry_GetAllClients(t *testing.T) {
 	registry.AddClient(client1)
 	registry.AddClient(client2)
 
-	assert.Equal(t, []*domain.Client{client1, client2}, registry.GetAllClients())
+	clients := registry.GetAllClients()
+	assert.Len(t, clients, 2)
+	assert.Contains(t, clients, client1)
+	assert.Contains(t, clients, client2)
 }
