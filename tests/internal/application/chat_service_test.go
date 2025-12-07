@@ -68,7 +68,7 @@ func TestChatService_EnterRoom_Success(t *testing.T) {
 	chatService.Start(ctx)
 
 	chatService.EnterRoom("1", "Jane Doe")
-	chatService.EnterRoom("1", "John Doe")
+	chatService.EnterRoom("2", "John Doe")
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -81,4 +81,57 @@ func TestChatService_EnterRoom_Success(t *testing.T) {
 		assert.Equal(t, expected.joined, userJoined)
 		assert.Equal(t, expected.room, broadcast.room)
 	}
+}
+
+func TestChatService_LeaveRoom_Success(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	clientRegistry := application.NewClientRegistry()
+	room := application.NewChatRoom("1", "general", clientRegistry)
+	frozenTime := time.Date(2025, 12, 7, 0, 0, 0, 0, time.UTC)
+
+	expectedBroadcasts := []struct {
+		left *domain.UserLeftSystemMessage
+		room *application.ChatRoom
+	}{
+		{
+			left: &domain.UserLeftSystemMessage{
+				Timestamp: frozenTime,
+				Name:      "Jane Doe",
+			},
+			room: room,
+		},
+		{
+			left: &domain.UserLeftSystemMessage{
+				Timestamp: frozenTime,
+				Name:      "John Doe",
+			},
+			room: room,
+		},
+	}
+
+	spyNotifier := SpyNotifier{broadcasts: make([]Broadcast, 0)}
+	chatService := application.NewChatService(room, &spyNotifier, func() time.Time { return frozenTime }, 3, 3)
+	room.LetClientIn(domain.NewClient("1", "Jane Doe"))
+	room.LetClientIn(domain.NewClient("2", "John Doe"))
+
+	chatService.Start(ctx)
+
+	chatService.LeaveRoom("1")
+	chatService.LeaveRoom("2")
+
+	time.Sleep(50 * time.Millisecond)
+
+	for idx, broadcast := range spyNotifier.broadcasts {
+		userLeft, ok := broadcast.msg.(*domain.UserLeftSystemMessage)
+		if !ok {
+			t.Errorf("expected a user left message, got %T", broadcast)
+		}
+		expected := expectedBroadcasts[idx]
+		assert.Equal(t, expected.left, userLeft)
+		assert.Equal(t, expected.room, broadcast.room)
+	}
+
+	assert.Len(t, room.GetClients(), 0)
 }
