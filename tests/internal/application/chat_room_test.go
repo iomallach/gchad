@@ -28,5 +28,7 @@ func TestChatRoom_LetClientOut(t *testing.T) {
 	event := chatRoom.LetClientIn(client)
 	assert.NotNil(t, event)
 
+	chatRoom.LetClientOut(client.Id())
+
 	assert.Equal(t, 0, len(chatRoom.GetClients()))
 }

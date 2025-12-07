@@ -21,7 +21,7 @@ func (r *ClientRegistry) RemoveClient(clientId string) {
 }
 
 func (r *ClientRegistry) GetAllClients() []*domain.Client {
-	clients := make([]*domain.Client, len(r.clients))
+	clients := make([]*domain.Client, 0, len(r.clients))
 
 	for _, client := range r.clients {
 		clients = append(clients, client)
