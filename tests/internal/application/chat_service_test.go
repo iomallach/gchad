@@ -255,3 +255,37 @@ func TestChatService_HandleErrors(t *testing.T) {
 	}
 	assert.Len(t, room.GetClients(), 1)
 }
+
+func TestChatService_SendMessage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	expectedMessages := []string{"Hello test", "Hello back"}
+	clientRegistry := application.NewClientRegistry()
+	room := application.NewChatRoom("1", "general", clientRegistry)
+	frozenTime := time.Date(2025, 12, 7, 0, 0, 0, 0, time.UTC)
+
+	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
+	spyNotifier := SpyNotifier{broadcasts: make([]Broadcast, 0)}
+	chatService := application.NewChatService(room, &spyNotifier, func() time.Time { return frozenTime }, 3, 3, &spyLogger)
+
+	chatService.Start(ctx)
+
+	chatService.SendMessage("1", "Hello test")
+	chatService.SendMessage("2", "Hello back")
+
+	time.Sleep(50 * time.Millisecond)
+
+	assert.Len(t, spyLogger.calls, 0)
+	assert.Len(t, spyNotifier.broadcasts, 2)
+
+	for idx, broadcast := range spyNotifier.broadcasts {
+		message, ok := broadcast.msg.(*domain.UserMessage)
+		if !ok {
+			t.Errorf("expected a user message, got %T", broadcast)
+		}
+		assert.Equal(t, room, broadcast.room)
+		assert.Equal(t, expectedMessages[idx], message.Message)
+		assert.Equal(t, frozenTime, message.Timestamp)
+	}
+}
