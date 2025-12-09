@@ -7,10 +7,6 @@ import (
 	"github.com/iomallach/gchad/internal/domain"
 )
 
-type Notifier interface {
-	BroadcastToRoom(*ChatRoom, domain.Messager) error
-}
-
 type ChatService struct {
 	room     *ChatRoom // TODO: later needs to be a repository of chat rooms
 	events   chan domain.ApplicationEvent
@@ -87,12 +83,12 @@ func (cs *ChatService) handleEvents(ctx context.Context) {
 			case *domain.UserJoinedRoom:
 				joinedMsg := domain.NewUserJoinedSystemMessage(e.Name, cs.clock())
 				if err := cs.notifier.BroadcastToRoom(cs.room, joinedMsg); err != nil {
-					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]interface{}))
+					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]any))
 				}
 			case *domain.UserLeftRoom:
 				leftMessage := domain.NewUserLeftSystemMessage(e.Name, cs.clock())
 				if err := cs.notifier.BroadcastToRoom(cs.room, leftMessage); err != nil {
-					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]interface{}))
+					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]any))
 				}
 			}
 		case <-ctx.Done():
