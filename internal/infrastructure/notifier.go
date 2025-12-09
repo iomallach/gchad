@@ -16,10 +16,10 @@ type Notifier interface {
 type ClientNotifier struct {
 	mu      sync.RWMutex
 	clients map[string]*ClientAdapter
-	logger  Logger
+	logger  application.Logger
 }
 
-func NewClientNotifier(logger Logger) *ClientNotifier {
+func NewClientNotifier(logger application.Logger) *ClientNotifier {
 	return &ClientNotifier{
 		mu:      sync.RWMutex{},
 		clients: make(map[string]*ClientAdapter),
@@ -30,7 +30,8 @@ func NewClientNotifier(logger Logger) *ClientNotifier {
 func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.Messager) error {
 	message, err := domain.MarshallMessage(msg)
 	if err != nil {
-		n.logger.Error().Err(err).Msg("failed to serialize a message")
+		// TODO: bring back .Err(err)
+		n.logger.Error("failed to serialize a message", make(map[string]any))
 		return err
 	}
 	n.mu.RLock()
@@ -40,12 +41,12 @@ func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.
 		if adapter, ok := n.clients[client.Id()]; ok {
 			select {
 			case adapter.send <- message:
-				n.logger.Debug().Str("client_id", client.Id()).Str("message_type", string(msg.MessageType())).Msg("message queued for client")
+				n.logger.Debug("message queued for client", map[string]any{"client_id": client.Id(), "message_type": string(msg.MessageType())})
 			default:
-				n.logger.Error().Str("client_id", client.Id()).Msg("failed to queue message, channel is full or closed")
+				n.logger.Error("failed to queue message, channel is full or closed", map[string]any{"client_id": client.Id()})
 			}
 		} else {
-			n.logger.Debug().Str("client_id", client.Id()).Msg("attempted to broadcast to client that doesn't exist")
+			n.logger.Debug("attempted to broadcast to client that doesn't exist", map[string]any{"client_id": client.Id()})
 		}
 	}
 
@@ -56,6 +57,7 @@ func (n *ClientNotifier) RegisterClient(adapter *ClientAdapter) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	// TODO: handle already exists situation
 	n.clients[adapter.Id()] = adapter
 }
 
@@ -63,5 +65,6 @@ func (n *ClientNotifier) UnregisterClient(id string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	// TODO: handle doesn't exist situation
 	delete(n.clients, id)
 }
