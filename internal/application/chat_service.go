@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/iomallach/gchad/internal/domain"
 )
@@ -16,15 +17,17 @@ type ChatService struct {
 	messages chan *domain.UserMessage
 	notifier Notifier
 	clock    ClockGen
+	logger   Logger
 }
 
-func NewChatService(room *ChatRoom, notifier Notifier, clock ClockGen, eventsChanSize int, messagesChanSize int) *ChatService {
+func NewChatService(room *ChatRoom, notifier Notifier, clock ClockGen, eventsChanSize int, messagesChanSize int, logger Logger) *ChatService {
 	return &ChatService{
 		room:     room,
 		events:   make(chan domain.ApplicationEvent, eventsChanSize),
 		messages: make(chan *domain.UserMessage, messagesChanSize),
 		notifier: notifier,
 		clock:    clock,
+		logger:   logger,
 	}
 }
 
@@ -39,7 +42,7 @@ func (cs *ChatService) EnterRoom(clientId string, clientName string) {
 	select {
 	case cs.events <- event:
 	default:
-		// TODO: log event channel full
+		cs.logger.Error("event channel full", make(map[string]any))
 	}
 }
 
@@ -49,19 +52,18 @@ func (cs *ChatService) LeaveRoom(clientId string) {
 	select {
 	case cs.events <- event:
 	default:
-		// TODO: log event channel full
+		cs.logger.Error("event channel full", make(map[string]any))
 	}
 }
 
-func (cs *ChatService) SendMessage(clientId string, msg string) error {
+func (cs *ChatService) SendMessage(clientId string, msg string) {
 	userMessage := domain.NewUserMessage(msg, cs.clock())
 
 	select {
 	case cs.messages <- userMessage:
 	default:
-		// TODO: log message channel full
+		cs.logger.Error("message channel full", make(map[string]any))
 	}
-	return cs.notifier.BroadcastToRoom(cs.room, userMessage)
 }
 
 func (cs *ChatService) handleMessages(ctx context.Context) {
@@ -69,7 +71,7 @@ func (cs *ChatService) handleMessages(ctx context.Context) {
 		select {
 		case msg := <-cs.messages:
 			if err := cs.notifier.BroadcastToRoom(cs.room, msg); err != nil {
-				// TODO: log error
+				cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]any))
 			}
 		case <-ctx.Done():
 			return
@@ -85,12 +87,12 @@ func (cs *ChatService) handleEvents(ctx context.Context) {
 			case *domain.UserJoinedRoom:
 				joinedMsg := domain.NewUserJoinedSystemMessage(e.Name, cs.clock())
 				if err := cs.notifier.BroadcastToRoom(cs.room, joinedMsg); err != nil {
-					// TODO: log error
+					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]interface{}))
 				}
 			case *domain.UserLeftRoom:
 				leftMessage := domain.NewUserLeftSystemMessage(e.Name, cs.clock())
 				if err := cs.notifier.BroadcastToRoom(cs.room, leftMessage); err != nil {
-					// TODO: log error
+					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]interface{}))
 				}
 			}
 		case <-ctx.Done():
