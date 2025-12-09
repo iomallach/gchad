@@ -2,6 +2,7 @@ package application_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -29,10 +30,30 @@ type ErrorNotifier struct {
 	broadcasts []Broadcast
 }
 
-func (s *ErrorNotifier) BroadCastToRoom(room *application.ChatRoom, msg domain.Messager) error {
+func (s *ErrorNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.Messager) error {
 	s.broadcasts = append(s.broadcasts, Broadcast{room, msg})
 
-	return nil
+	return fmt.Errorf("error broadcasting")
+}
+
+type LogCall struct {
+	msg    string
+	fields map[string]any
+	level  string
+}
+
+type SpyLogger struct {
+	calls []LogCall
+}
+
+func (l *SpyLogger) Error(msg string, fields map[string]any) {
+	l.calls = append(l.calls, LogCall{msg: msg, fields: fields, level: "ERROR"})
+}
+func (l *SpyLogger) Info(msg string, fields map[string]any) {
+	l.calls = append(l.calls, LogCall{msg: msg, fields: fields, level: "INFO"})
+}
+func (l *SpyLogger) Debug(msg string, fields map[string]any) {
+	l.calls = append(l.calls, LogCall{msg: msg, fields: fields, level: "DEBUG"})
 }
 
 func TestChatService_EnterRoom(t *testing.T) {
@@ -76,9 +97,10 @@ func TestChatService_EnterRoom(t *testing.T) {
 			clientRegistry := application.NewClientRegistry()
 			room := application.NewChatRoom("1", "general", clientRegistry)
 			frozenTime := time.Date(2025, 12, 7, 0, 0, 0, 0, time.UTC)
+			spyLogger := SpyLogger{calls: make([]LogCall, 0)}
 
 			spyNotifier := SpyNotifier{broadcasts: make([]Broadcast, 0)}
-			chatService := application.NewChatService(room, &spyNotifier, func() time.Time { return frozenTime }, 3, 3)
+			chatService := application.NewChatService(room, &spyNotifier, func() time.Time { return frozenTime }, 3, 3, &spyLogger)
 
 			chatService.Start(ctx)
 
@@ -99,6 +121,7 @@ func TestChatService_EnterRoom(t *testing.T) {
 				assert.Equal(t, expectedBroadcasts[idx].msg, userJoined)
 				assert.Equal(t, expectedBroadcasts[idx].room, broadcast.room)
 			}
+			assert.Equal(t, 0, len(spyLogger.calls))
 		})
 	}
 }
@@ -169,8 +192,9 @@ func TestChatService_LeaveRoom(t *testing.T) {
 			room := application.NewChatRoom("1", "general", clientRegistry)
 			frozenTime := time.Date(2025, 12, 7, 0, 0, 0, 0, time.UTC)
 
+			spyLogger := SpyLogger{calls: make([]LogCall, 0)}
 			spyNotifier := SpyNotifier{broadcasts: make([]Broadcast, 0)}
-			chatService := application.NewChatService(room, &spyNotifier, func() time.Time { return frozenTime }, 3, 3)
+			chatService := application.NewChatService(room, &spyNotifier, func() time.Time { return frozenTime }, 3, 3, &spyLogger)
 
 			for _, client := range tt.clientsIn {
 				room.LetClientIn(domain.NewClient(client.id, client.name))
@@ -197,6 +221,37 @@ func TestChatService_LeaveRoom(t *testing.T) {
 			}
 
 			assert.Len(t, room.GetClients(), tt.expectedClientsCount)
+			assert.Equal(t, 0, len(spyLogger.calls))
 		})
 	}
+}
+
+func TestChatService_HandleErrors(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	clientRegistry := application.NewClientRegistry()
+	room := application.NewChatRoom("1", "general", clientRegistry)
+	frozenTime := time.Date(2025, 12, 7, 0, 0, 0, 0, time.UTC)
+
+	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
+	spyNotifier := ErrorNotifier{broadcasts: make([]Broadcast, 0)}
+	chatService := application.NewChatService(room, &spyNotifier, func() time.Time { return frozenTime }, 3, 3, &spyLogger)
+
+	chatService.Start(ctx)
+
+	chatService.EnterRoom("1", "Jane Doe")
+	chatService.EnterRoom("2", "John Doe")
+	chatService.LeaveRoom("1")
+	chatService.SendMessage("1", "Hello test")
+
+	time.Sleep(50 * time.Millisecond)
+
+	assert.Equal(t, 4, len(spyLogger.calls))
+	for _, call := range spyLogger.calls {
+		assert.Equal(t, "error broadcasting to room: error broadcasting", call.msg)
+		assert.Equal(t, "ERROR", call.level)
+		assert.Len(t, call.fields, 0)
+	}
+	assert.Len(t, room.GetClients(), 1)
 }
