@@ -2,12 +2,6 @@ package infrastructure
 
 import "github.com/rs/zerolog"
 
-type Logger interface {
-	Debug() *zerolog.Event
-	Info() *zerolog.Event
-	Error() *zerolog.Event
-}
-
 type ZeroLogLogger struct {
 	logger zerolog.Logger
 }
