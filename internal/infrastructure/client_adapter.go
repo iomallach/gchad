@@ -14,11 +14,11 @@ type Connection interface {
 }
 
 type ClientConfiguration struct {
-	writeWait          time.Duration
-	pongWait           time.Duration
-	pingPeriod         time.Duration
-	sendChannelSize    int
-	receiveChannelSize int
+	WriteWait          time.Duration
+	PongWait           time.Duration
+	PingPeriod         time.Duration
+	SendChannelSize    int
+	ReceiveChannelSize int
 }
 
 type ClientAdapter struct {
@@ -43,8 +43,8 @@ func NewClientAdapter(id string, name string, conn Connection, configuration Cli
 		id:            id,
 		name:          name,
 		conn:          conn,
-		send:          make(chan domain.Messager, configuration.sendChannelSize),
-		recv:          make(chan domain.Messager, configuration.receiveChannelSize),
+		send:          make(chan domain.Messager, configuration.SendChannelSize),
+		recv:          make(chan domain.Messager, configuration.ReceiveChannelSize),
 		configuration: configuration,
 	}
 }
