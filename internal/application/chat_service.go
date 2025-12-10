@@ -7,6 +7,12 @@ import (
 	"github.com/iomallach/gchad/internal/domain"
 )
 
+type ChatServicer interface {
+	EnterRoom(clientId string, clientName string)
+	LeaveRoom(clientId string)
+	SendMessage(clientId string, msg string)
+}
+
 type ChatService struct {
 	room     *ChatRoom // TODO: later needs to be a repository of chat rooms
 	events   chan domain.ApplicationEvent
