@@ -1,6 +1,7 @@
 package infrastructure_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -87,4 +88,52 @@ func TestClientNotifier_BroadCastToRoom(t *testing.T) {
 
 		assert.Equal(t, "Hello test", msg.Message)
 	}
+}
+
+func TestClientNotifier_RegisterUnregisterClient(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	clientConfiguration := infrastructure.ClientConfiguration{
+		SendChannelSize:    1,
+		ReceiveChannelSize: 1,
+	}
+	clients := []*infrastructure.ClientAdapter{
+		infrastructure.NewClientAdapter("1", "Jane Doe", nil, clientConfiguration),
+		infrastructure.NewClientAdapter("2", "John Doe", nil, clientConfiguration),
+	}
+	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
+	registry := make(map[string]*infrastructure.ClientAdapter)
+	notifier := infrastructure.NewClientNotifier(&spyLogger, registry)
+
+	notifier.Start(ctx)
+
+	// first register all the clients
+	for _, client := range clients {
+		notifier.RegisterClient(client)
+	}
+
+	// TODO: can I replaces these inefficient occurences with a select?
+	time.Sleep(time.Millisecond * 50)
+
+	assert.Len(t, spyLogger.Errors(), 0)
+	assert.Len(t, spyLogger.Debugs(), 2)
+	assert.Len(t, registry, 2)
+	for _, client := range clients {
+		clientFromRegistry, ok := registry[client.Id()]
+		if !ok {
+			t.Fatalf("expected client %s to be in registry, but it wasn't there", client.Id())
+		}
+		assert.Equal(t, client, clientFromRegistry)
+	}
+
+	// then unregister
+	for _, client := range clients {
+		notifier.UnregisterClient(client.Id())
+	}
+
+	time.Sleep(time.Millisecond * 50)
+
+	assert.Len(t, spyLogger.Errors(), 0)
+	assert.Len(t, registry, 0)
 }

@@ -16,10 +16,10 @@ type ClientNotifier struct {
 	logger     application.Logger
 }
 
-func NewClientNotifier(logger application.Logger) *ClientNotifier {
+func NewClientNotifier(logger application.Logger, registry map[string]*ClientAdapter) *ClientNotifier {
 	return &ClientNotifier{
 		mu:         sync.RWMutex{},
-		clients:    make(map[string]*ClientAdapter),
+		clients:    registry,
 		register:   make(chan *ClientAdapter, 256),
 		unregister: make(chan string, 256),
 		logger:     logger,
@@ -80,16 +80,23 @@ func (n *ClientNotifier) handleClientLifecycle(ctx context.Context) {
 	for {
 		select {
 		case client := <-n.register:
-			// TODO: handle already exists situation
 			n.mu.Lock()
-			n.clients[client.Id()] = client
+			if _, ok := n.clients[client.Id()]; ok {
+				n.logger.Error("client already exists, skipping adding", map[string]any{"client_id": client.Id()})
+			} else {
+				n.clients[client.Id()] = client
+			}
 			n.mu.Unlock()
 		case clientId := <-n.unregister:
-			// TODO: handle doesn't exist situation
 			n.mu.Lock()
-			delete(n.clients, clientId)
+			if _, ok := n.clients[clientId]; ok {
+				delete(n.clients, clientId)
+			} else {
+				n.logger.Error("client doesn't exist, skipping unregistering", map[string]any{"client_id": clientId})
+			}
 			n.mu.Unlock()
 		case <-ctx.Done():
+			n.logger.Debug("notifier context done, exiting", make(map[string]any, 0))
 			return
 		}
 	}
