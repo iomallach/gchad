@@ -1,6 +1,11 @@
 package infrastructure
 
-import "time"
+import (
+	"time"
+
+	"github.com/iomallach/gchad/internal/application"
+	"github.com/iomallach/gchad/internal/domain"
+)
 
 type Connection interface {
 	Close() error
@@ -21,8 +26,8 @@ type ClientAdapter struct {
 	name string
 	conn Connection
 	// TODO: ChatService?
-	notifier      Notifier
-	send          chan []byte
+	chatService   application.ChatService
+	send          chan domain.Messager
 	configuration ClientConfiguration
 }
 
@@ -30,17 +35,17 @@ func (c *ClientAdapter) Id() string {
 	return c.id
 }
 
-func (c *ClientAdapter) Send() chan []byte {
+func (c *ClientAdapter) Send() chan domain.Messager {
 	return c.send
 }
 
-func NewClientAdapter(id string, name string, conn Connection, notifier Notifier, configuration ClientConfiguration) *ClientAdapter {
+func NewClientAdapter(id string, name string, conn Connection, chatService *application.ChatService, configuration ClientConfiguration) *ClientAdapter {
 	return &ClientAdapter{
 		id:            id,
 		name:          name,
 		conn:          conn,
-		notifier:      notifier,
-		send:          make(chan []byte, configuration.sendChannelSize),
+		chatService:   *chatService,
+		send:          make(chan domain.Messager, configuration.sendChannelSize),
 		configuration: configuration,
 	}
 }
