@@ -9,15 +9,17 @@ import (
 
 type Notifier interface {
 	application.Notifier
-	RegisterClient(*ClientAdapter)
+	//TODO: likely these do not have to be part of this interface
+	// and it's okay to call these on the concrete implementation when wiring
+	RegisterClient(ClientAdapter)
 	UnregisterClient(string)
 	Start()
 }
 
 type ClientNotifier struct {
 	mu         sync.RWMutex
-	clients    map[string]*ClientAdapter
-	register   chan *ClientAdapter
+	clients    map[string]ClientAdapter
+	register   chan ClientAdapter
 	unregister chan string
 	logger     application.Logger
 }
@@ -25,8 +27,8 @@ type ClientNotifier struct {
 func NewClientNotifier(logger application.Logger) *ClientNotifier {
 	return &ClientNotifier{
 		mu:         sync.RWMutex{},
-		clients:    make(map[string]*ClientAdapter),
-		register:   make(chan *ClientAdapter, 256),
+		clients:    make(map[string]ClientAdapter),
+		register:   make(chan ClientAdapter, 256),
 		unregister: make(chan string, 256),
 		logger:     logger,
 	}
@@ -37,19 +39,13 @@ func (n *ClientNotifier) Start() {
 }
 
 func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.Messager) error {
-	message, err := domain.MarshallMessage(msg)
-	if err != nil {
-		// TODO: bring back .Err(err)
-		n.logger.Error("failed to serialize a message", make(map[string]any))
-		return err
-	}
 	n.mu.RLock()
 	defer n.mu.Unlock()
 
 	for _, client := range room.GetClients() {
 		if adapter, ok := n.clients[client.Id()]; ok {
 			select {
-			case adapter.send <- message:
+			case adapter.send <- msg:
 				n.logger.Debug("message queued for client", map[string]any{"client_id": client.Id(), "message_type": string(msg.MessageType())})
 			default:
 				n.logger.Error("failed to queue message, channel is full or closed", map[string]any{"client_id": client.Id()})
@@ -62,7 +58,7 @@ func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.
 	return nil
 }
 
-func (n *ClientNotifier) RegisterClient(client *ClientAdapter) {
+func (n *ClientNotifier) RegisterClient(client ClientAdapter) {
 	select {
 	case n.register <- client:
 		n.logger.Debug("scheduled client to be registered", map[string]any{"client_id": client.Id()})

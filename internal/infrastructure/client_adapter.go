@@ -22,11 +22,10 @@ type ClientConfiguration struct {
 }
 
 type ClientAdapter struct {
-	id   string
-	name string
-	conn Connection
-	// TODO: ChatService?
-	chatService   application.ChatService
+	id            string
+	name          string
+	conn          Connection
+	chatService   application.ChatServicer
 	send          chan domain.Messager
 	configuration ClientConfiguration
 }
@@ -39,12 +38,12 @@ func (c *ClientAdapter) Send() chan domain.Messager {
 	return c.send
 }
 
-func NewClientAdapter(id string, name string, conn Connection, chatService *application.ChatService, configuration ClientConfiguration) *ClientAdapter {
+func NewClientAdapter(id string, name string, conn Connection, chatService application.ChatServicer, configuration ClientConfiguration) *ClientAdapter {
 	return &ClientAdapter{
 		id:            id,
 		name:          name,
 		conn:          conn,
-		chatService:   *chatService,
+		chatService:   chatService,
 		send:          make(chan domain.Messager, configuration.sendChannelSize),
 		configuration: configuration,
 	}
