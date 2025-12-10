@@ -9,8 +9,8 @@ import (
 
 type ClientNotifier struct {
 	mu         sync.RWMutex
-	clients    map[string]ClientAdapter
-	register   chan ClientAdapter
+	clients    map[string]*ClientAdapter
+	register   chan *ClientAdapter
 	unregister chan string
 	logger     application.Logger
 }
@@ -18,8 +18,8 @@ type ClientNotifier struct {
 func NewClientNotifier(logger application.Logger) *ClientNotifier {
 	return &ClientNotifier{
 		mu:         sync.RWMutex{},
-		clients:    make(map[string]ClientAdapter),
-		register:   make(chan ClientAdapter, 256),
+		clients:    make(map[string]*ClientAdapter),
+		register:   make(chan *ClientAdapter, 256),
 		unregister: make(chan string, 256),
 		logger:     logger,
 	}
@@ -49,7 +49,7 @@ func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.
 	return nil
 }
 
-func (n *ClientNotifier) RegisterClient(client ClientAdapter) {
+func (n *ClientNotifier) RegisterClient(client *ClientAdapter) {
 	select {
 	case n.register <- client:
 		n.logger.Debug("scheduled client to be registered", map[string]any{"client_id": client.Id()})
