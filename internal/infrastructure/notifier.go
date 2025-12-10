@@ -7,15 +7,6 @@ import (
 	"github.com/iomallach/gchad/internal/domain"
 )
 
-type Notifier interface {
-	application.Notifier
-	//TODO: likely these do not have to be part of this interface
-	// and it's okay to call these on the concrete implementation when wiring
-	RegisterClient(ClientAdapter)
-	UnregisterClient(string)
-	Start()
-}
-
 type ClientNotifier struct {
 	mu         sync.RWMutex
 	clients    map[string]ClientAdapter
