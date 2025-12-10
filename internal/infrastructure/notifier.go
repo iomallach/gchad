@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"context"
 	"sync"
 
 	"github.com/iomallach/gchad/internal/application"
@@ -25,13 +26,23 @@ func NewClientNotifier(logger application.Logger) *ClientNotifier {
 	}
 }
 
-func (n *ClientNotifier) Start() {
-	go n.handleClientLifecycle()
+func NewClientNotifierFromExistingClients(logger application.Logger, clients map[string]*ClientAdapter) *ClientNotifier {
+	return &ClientNotifier{
+		mu:         sync.RWMutex{},
+		clients:    clients,
+		register:   make(chan *ClientAdapter, 256),
+		unregister: make(chan string, 256),
+		logger:     logger,
+	}
 }
 
-func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.Messager) error {
+func (n *ClientNotifier) Start(ctx context.Context) {
+	go n.handleClientLifecycle(ctx)
+}
+
+func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.Messager) {
 	n.mu.RLock()
-	defer n.mu.Unlock()
+	defer n.mu.RUnlock()
 
 	for _, client := range room.GetClients() {
 		if adapter, ok := n.clients[client.Id()]; ok {
@@ -45,8 +56,6 @@ func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.
 			n.logger.Debug("attempted to broadcast to client that doesn't exist", map[string]any{"client_id": client.Id()})
 		}
 	}
-
-	return nil
 }
 
 func (n *ClientNotifier) RegisterClient(client *ClientAdapter) {
@@ -67,7 +76,7 @@ func (n *ClientNotifier) UnregisterClient(id string) {
 	}
 }
 
-func (n *ClientNotifier) handleClientLifecycle() {
+func (n *ClientNotifier) handleClientLifecycle(ctx context.Context) {
 	for {
 		select {
 		case client := <-n.register:
@@ -80,6 +89,8 @@ func (n *ClientNotifier) handleClientLifecycle() {
 			n.mu.Lock()
 			delete(n.clients, clientId)
 			n.mu.Unlock()
+		case <-ctx.Done():
+			return
 		}
 	}
 }

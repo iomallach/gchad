@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/iomallach/gchad/internal/domain"
 )
@@ -72,9 +71,7 @@ func (cs *ChatService) handleMessages(ctx context.Context) {
 	for {
 		select {
 		case msg := <-cs.messages:
-			if err := cs.notifier.BroadcastToRoom(cs.room, msg); err != nil {
-				cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]any))
-			}
+			cs.notifier.BroadcastToRoom(cs.room, msg)
 		case <-ctx.Done():
 			return
 		}
@@ -88,14 +85,11 @@ func (cs *ChatService) handleEvents(ctx context.Context) {
 			switch e := event.(type) {
 			case *domain.UserJoinedRoom:
 				joinedMsg := domain.NewUserJoinedSystemMessage(e.Name, cs.clock())
-				if err := cs.notifier.BroadcastToRoom(cs.room, joinedMsg); err != nil {
-					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]any))
-				}
+				cs.notifier.BroadcastToRoom(cs.room, joinedMsg)
+
 			case *domain.UserLeftRoom:
 				leftMessage := domain.NewUserLeftSystemMessage(e.Name, cs.clock())
-				if err := cs.notifier.BroadcastToRoom(cs.room, leftMessage); err != nil {
-					cs.logger.Error(fmt.Sprintf("error broadcasting to room: %s", err.Error()), make(map[string]any))
-				}
+				cs.notifier.BroadcastToRoom(cs.room, leftMessage)
 			}
 		case <-ctx.Done():
 			return
