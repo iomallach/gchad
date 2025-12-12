@@ -11,50 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type LogCall struct {
-	msg    string
-	fields map[string]any
-	level  string
-}
-
-type SpyLogger struct {
-	calls []LogCall
-}
-
-func (l *SpyLogger) Error(msg string, fields map[string]any) {
-	l.calls = append(l.calls, LogCall{msg: msg, fields: fields, level: "ERROR"})
-}
-func (l *SpyLogger) Info(msg string, fields map[string]any) {
-	l.calls = append(l.calls, LogCall{msg: msg, fields: fields, level: "INFO"})
-}
-func (l *SpyLogger) Debug(msg string, fields map[string]any) {
-	l.calls = append(l.calls, LogCall{msg: msg, fields: fields, level: "DEBUG"})
-}
-
-func (l *SpyLogger) Errors() []LogCall {
-	errors := make([]LogCall, 0)
-
-	for _, call := range l.calls {
-		if call.level == "ERROR" {
-			errors = append(errors, call)
-		}
-	}
-
-	return errors
-}
-
-func (l *SpyLogger) Debugs() []LogCall {
-	errors := make([]LogCall, 0)
-
-	for _, call := range l.calls {
-		if call.level == "DEBUG" {
-			errors = append(errors, call)
-		}
-	}
-
-	return errors
-}
-
 func TestClientNotifier_BroadCastToRoom(t *testing.T) {
 	clientConfiguration := infrastructure.ClientConfiguration{
 		SendChannelSize:    1,
@@ -62,8 +18,12 @@ func TestClientNotifier_BroadCastToRoom(t *testing.T) {
 	}
 	clients := []*domain.Client{domain.NewClient("1", "Jane Doe"), domain.NewClient("2", "John Doe")}
 	adapters := make([]*infrastructure.Client, 0)
+	adapterSpyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	for _, client := range clients {
-		adapters = append(adapters, infrastructure.NewClientAdapter(client.Id(), client.Name(), nil, clientConfiguration))
+		adapters = append(
+			adapters,
+			infrastructure.NewClient(client.Id(), client.Name(), nil, clientConfiguration, &adapterSpyLogger),
+		)
 	}
 	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	clientRegistry := application.NewClientRegistry()
@@ -98,9 +58,10 @@ func TestClientNotifier_RegisterUnregisterClient(t *testing.T) {
 		SendChannelSize:    1,
 		ReceiveChannelSize: 1,
 	}
+	adapterSpyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	clients := []*infrastructure.Client{
-		infrastructure.NewClientAdapter("1", "Jane Doe", nil, clientConfiguration),
-		infrastructure.NewClientAdapter("2", "John Doe", nil, clientConfiguration),
+		infrastructure.NewClient("1", "Jane Doe", nil, clientConfiguration, &adapterSpyLogger),
+		infrastructure.NewClient("2", "John Doe", nil, clientConfiguration, &adapterSpyLogger),
 	}
 	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	registry := make(map[string]*infrastructure.Client)
