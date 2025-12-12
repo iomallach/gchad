@@ -58,7 +58,7 @@ func (cs *ChatService) LeaveRoom(clientId string) {
 }
 
 func (cs *ChatService) SendMessage(clientId string, msg string) {
-	userMessage := domain.NewUserMessage(msg, cs.clock())
+	userMessage := domain.NewUserMessage(msg, cs.clock(), clientId)
 
 	select {
 	case cs.messages <- userMessage:
