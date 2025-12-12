@@ -26,7 +26,7 @@ type ClientConfiguration struct {
 	ReceiveChannelSize int
 }
 
-type ClientAdapter struct {
+type Client struct {
 	id            string
 	name          string
 	conn          Connection
@@ -36,21 +36,21 @@ type ClientAdapter struct {
 	logger        application.Logger
 }
 
-func (c *ClientAdapter) Id() string {
+func (c *Client) Id() string {
 	return c.id
 }
 
-func (c *ClientAdapter) Send() chan domain.Messager {
+func (c *Client) Send() chan domain.Messager {
 	return c.send
 }
 
-func (c *ClientAdapter) Start() {
+func (c *Client) Start() {
 	go c.ReadMessages()
 	go c.WriteMessages()
 }
 
-func NewClientAdapter(id string, name string, conn Connection, configuration ClientConfiguration, logger application.Logger) *ClientAdapter {
-	return &ClientAdapter{
+func NewClientAdapter(id string, name string, conn Connection, configuration ClientConfiguration, logger application.Logger) *Client {
+	return &Client{
 		id:            id,
 		name:          name,
 		conn:          conn,
@@ -62,17 +62,23 @@ func NewClientAdapter(id string, name string, conn Connection, configuration Cli
 }
 
 // TODO: Need to figure out graceful shutdown of both pumps
-func (c *ClientAdapter) ReadMessages() {
+func (c *Client) ReadMessages() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
-			c.logger.Error("could not read the message", map[string]any{"client_id": c.Id()})
+			c.logger.Error(
+				fmt.Sprintf("could not read the message: %s", err.Error()),
+				map[string]any{"client_id": c.Id()},
+			)
 			continue
 		}
 
 		domainMessage, err := domain.UnmarshalMessage(message)
 		if err != nil {
-			c.logger.Error("failed to unmarshall the message", map[string]any{"client_id": c.Id()})
+			c.logger.Error(
+				fmt.Sprintf("failed to unmarshall the message: %s", err.Error()),
+				map[string]any{"client_id": c.Id()},
+			)
 			continue
 		}
 
@@ -85,7 +91,7 @@ func (c *ClientAdapter) ReadMessages() {
 	}
 }
 
-func (c *ClientAdapter) WriteMessages() {
+func (c *Client) WriteMessages() {
 	ticker := time.NewTicker(c.configuration.PingPeriod)
 	defer ticker.Stop()
 

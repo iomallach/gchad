@@ -10,27 +10,27 @@ import (
 
 type ClientNotifier struct {
 	mu         sync.RWMutex
-	clients    map[string]*ClientAdapter
-	register   chan *ClientAdapter
+	clients    map[string]*Client
+	register   chan *Client
 	unregister chan string
 	logger     application.Logger
 }
 
-func NewClientNotifier(logger application.Logger, registry map[string]*ClientAdapter) *ClientNotifier {
+func NewClientNotifier(logger application.Logger, registry map[string]*Client) *ClientNotifier {
 	return &ClientNotifier{
 		mu:         sync.RWMutex{},
 		clients:    registry,
-		register:   make(chan *ClientAdapter, 256),
+		register:   make(chan *Client, 256),
 		unregister: make(chan string, 256),
 		logger:     logger,
 	}
 }
 
-func NewClientNotifierFromExistingClients(logger application.Logger, clients map[string]*ClientAdapter) *ClientNotifier {
+func NewClientNotifierFromExistingClients(logger application.Logger, clients map[string]*Client) *ClientNotifier {
 	return &ClientNotifier{
 		mu:         sync.RWMutex{},
 		clients:    clients,
-		register:   make(chan *ClientAdapter, 256),
+		register:   make(chan *Client, 256),
 		unregister: make(chan string, 256),
 		logger:     logger,
 	}
@@ -58,7 +58,7 @@ func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.
 	}
 }
 
-func (n *ClientNotifier) RegisterClient(client *ClientAdapter) {
+func (n *ClientNotifier) RegisterClient(client *Client) {
 	select {
 	case n.register <- client:
 		n.logger.Debug("scheduled client to be registered", map[string]any{"client_id": client.Id()})
