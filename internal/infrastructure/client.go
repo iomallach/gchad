@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -44,12 +45,12 @@ func (c *Client) Send() chan domain.Messager {
 	return c.send
 }
 
-func (c *Client) Start() {
-	go c.ReadMessages()
-	go c.WriteMessages()
+func (c *Client) Start(ctx context.Context) {
+	go c.ReadMessages(ctx)
+	go c.WriteMessages(ctx)
 }
 
-func NewClientAdapter(id string, name string, conn Connection, configuration ClientConfiguration, logger application.Logger) *Client {
+func NewClient(id string, name string, conn Connection, configuration ClientConfiguration, logger application.Logger) *Client {
 	return &Client{
 		id:            id,
 		name:          name,
@@ -62,7 +63,7 @@ func NewClientAdapter(id string, name string, conn Connection, configuration Cli
 }
 
 // TODO: Need to figure out graceful shutdown of both pumps
-func (c *Client) ReadMessages() {
+func (c *Client) ReadMessages(ctx context.Context) {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -71,6 +72,10 @@ func (c *Client) ReadMessages() {
 				map[string]any{"client_id": c.Id()},
 			)
 			continue
+		}
+
+		if ctx.Err() != nil {
+			return
 		}
 
 		domainMessage, err := domain.UnmarshalMessage(message)
@@ -91,12 +96,21 @@ func (c *Client) ReadMessages() {
 	}
 }
 
-func (c *Client) WriteMessages() {
+func (c *Client) WriteMessages(ctx context.Context) {
 	ticker := time.NewTicker(c.configuration.PingPeriod)
 	defer ticker.Stop()
+	defer c.conn.Close()
 
 	for {
 		select {
+		case <-ctx.Done():
+			if err := c.conn.WriteCloseMessage([]byte{}); err != nil {
+				c.logger.Error(
+					fmt.Sprintf("failed to write close message: %s", err.Error()),
+					map[string]any{"client_id": c.Id()},
+				)
+				return
+			}
 		case domanMessage, ok := <-c.send:
 			if !ok {
 				c.logger.Error(
