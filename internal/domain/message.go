@@ -62,6 +62,7 @@ func (m *UserLeftSystemMessage) MessageType() MessageType {
 type UserMessage struct {
 	Timestamp time.Time `json:"timestamp"`
 	Message   string    `json:"message"`
+	From      string    `json:"from"`
 }
 
 func NewUserMessage(msg string, timestamp time.Time) *UserMessage {
