@@ -13,8 +13,7 @@ import (
 
 func TestClientNotifier_BroadCastToRoom(t *testing.T) {
 	clientConfiguration := infrastructure.ClientConfiguration{
-		SendChannelSize:    1,
-		ReceiveChannelSize: 1,
+		SendChannelSize: 1,
 	}
 	clients := []*domain.Client{domain.NewClient("1", "Jane Doe"), domain.NewClient("2", "John Doe")}
 	adapters := make([]*infrastructure.Client, 0)
@@ -22,7 +21,7 @@ func TestClientNotifier_BroadCastToRoom(t *testing.T) {
 	for _, client := range clients {
 		adapters = append(
 			adapters,
-			infrastructure.NewClient(client.Id(), client.Name(), nil, clientConfiguration, &adapterSpyLogger),
+			infrastructure.NewClient(client.Id(), client.Name(), nil, nil, clientConfiguration, &adapterSpyLogger),
 		)
 	}
 	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
@@ -37,7 +36,7 @@ func TestClientNotifier_BroadCastToRoom(t *testing.T) {
 	}
 	notifier := infrastructure.NewClientNotifierFromExistingClients(&spyLogger, existingClients)
 
-	notifier.BroadcastToRoom(room, domain.NewUserMessage("Hello test", time.Now()))
+	notifier.BroadcastToRoom(room, domain.NewUserMessage("Hello test", time.Now(), "test"))
 
 	for _, adapter := range adapters {
 		msgIntf := <-adapter.Send()
@@ -55,13 +54,12 @@ func TestClientNotifier_RegisterUnregisterClient(t *testing.T) {
 	defer cancel()
 
 	clientConfiguration := infrastructure.ClientConfiguration{
-		SendChannelSize:    1,
-		ReceiveChannelSize: 1,
+		SendChannelSize: 1,
 	}
 	adapterSpyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	clients := []*infrastructure.Client{
-		infrastructure.NewClient("1", "Jane Doe", nil, clientConfiguration, &adapterSpyLogger),
-		infrastructure.NewClient("2", "John Doe", nil, clientConfiguration, &adapterSpyLogger),
+		infrastructure.NewClient("1", "Jane Doe", nil, nil, clientConfiguration, &adapterSpyLogger),
+		infrastructure.NewClient("2", "John Doe", nil, nil, clientConfiguration, &adapterSpyLogger),
 	}
 	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	registry := make(map[string]*infrastructure.Client)

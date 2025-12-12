@@ -65,10 +65,11 @@ type UserMessage struct {
 	From      string    `json:"from"`
 }
 
-func NewUserMessage(msg string, timestamp time.Time) *UserMessage {
+func NewUserMessage(msg string, timestamp time.Time, from string) *UserMessage {
 	return &UserMessage{
 		Timestamp: timestamp,
 		Message:   msg,
+		From:      from,
 	}
 }
 

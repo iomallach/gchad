@@ -19,12 +19,11 @@ type Connection interface {
 }
 
 type ClientConfiguration struct {
-	WriteWait          time.Duration
-	PongWait           time.Duration
-	PingPeriod         time.Duration
-	RecieveChanWait    time.Duration
-	SendChannelSize    int
-	ReceiveChannelSize int
+	WriteWait       time.Duration
+	PongWait        time.Duration
+	PingPeriod      time.Duration
+	RecieveChanWait time.Duration
+	SendChannelSize int
 }
 
 type Client struct {
@@ -50,13 +49,13 @@ func (c *Client) Start(ctx context.Context) {
 	go c.WriteMessages(ctx)
 }
 
-func NewClient(id string, name string, conn Connection, configuration ClientConfiguration, logger application.Logger) *Client {
+func NewClient(id string, name string, conn Connection, recv chan domain.Messager, configuration ClientConfiguration, logger application.Logger) *Client {
 	return &Client{
 		id:            id,
 		name:          name,
 		conn:          conn,
 		send:          make(chan domain.Messager, configuration.SendChannelSize),
-		recv:          make(chan domain.Messager, configuration.ReceiveChannelSize),
+		recv:          recv,
 		configuration: configuration,
 		logger:        logger,
 	}
@@ -75,6 +74,7 @@ func (c *Client) ReadMessages(ctx context.Context) {
 		}
 
 		if ctx.Err() != nil {
+			c.logger.Debug("cancelling read pump", map[string]any{"client_id": c.Id()})
 			return
 		}
 
@@ -111,6 +111,7 @@ func (c *Client) WriteMessages(ctx context.Context) {
 				)
 				return
 			}
+			return
 		case domanMessage, ok := <-c.send:
 			if !ok {
 				c.logger.Error(
