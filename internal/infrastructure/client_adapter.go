@@ -11,7 +11,6 @@ import (
 type Connection interface {
 	Close() error
 	ReadMessage() (int, []byte, error)
-	WriteMessage(int, []byte) error
 	SetWriteDeadline(time.Time) error
 	WriteCloseMessage([]byte) error
 	WriteTextMessage([]byte) error
