@@ -10,6 +10,10 @@ type SpyLogger struct {
 	calls []LogCall
 }
 
+func NewSpyLogger() *SpyLogger {
+	return &SpyLogger{calls: make([]LogCall, 0)}
+}
+
 func (l *SpyLogger) Error(msg string, fields map[string]any) {
 	l.calls = append(l.calls, LogCall{msg: msg, fields: fields, level: "ERROR"})
 }

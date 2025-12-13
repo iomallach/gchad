@@ -21,7 +21,15 @@ func TestClientNotifier_BroadCastToRoom(t *testing.T) {
 	for _, client := range clients {
 		adapters = append(
 			adapters,
-			infrastructure.NewClient(client.Id(), client.Name(), nil, nil, clientConfiguration, &adapterSpyLogger),
+			infrastructure.NewClient(
+				client.Id(),
+				client.Name(),
+				nil,
+				nil,
+				make(chan domain.Messager, clientConfiguration.SendChannelSize),
+				clientConfiguration,
+				&adapterSpyLogger,
+			),
 		)
 	}
 	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
@@ -58,8 +66,8 @@ func TestClientNotifier_RegisterUnregisterClient(t *testing.T) {
 	}
 	adapterSpyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	clients := []*infrastructure.Client{
-		infrastructure.NewClient("1", "Jane Doe", nil, nil, clientConfiguration, &adapterSpyLogger),
-		infrastructure.NewClient("2", "John Doe", nil, nil, clientConfiguration, &adapterSpyLogger),
+		infrastructure.NewClient("1", "Jane Doe", nil, nil, nil, clientConfiguration, &adapterSpyLogger),
+		infrastructure.NewClient("2", "John Doe", nil, nil, nil, clientConfiguration, &adapterSpyLogger),
 	}
 	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
 	registry := make(map[string]*infrastructure.Client)

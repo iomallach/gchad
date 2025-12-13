@@ -118,21 +118,25 @@ func mustMarshallMessage(msg domain.Messager) []byte {
 	return data
 }
 
-func TestClient_ReadMessagesPumpSendsMessagesToRecv(t *testing.T) {
-	ctx := t.Context()
-
-	configuration := infrastructure.ClientConfiguration{
+func NewTestingClientConfiguration() infrastructure.ClientConfiguration {
+	return infrastructure.ClientConfiguration{
 		WriteWait:       50 * time.Millisecond,
 		PongWait:        50 * time.Millisecond,
 		PingPeriod:      50 * time.Millisecond,
 		RecieveChanWait: 50 * time.Millisecond,
 		SendChannelSize: 3,
 	}
+}
+
+func TestClient_ReadMessagesPumpSendsMessagesToRecv(t *testing.T) {
+	ctx := t.Context()
+
+	configuration := NewTestingClientConfiguration()
 	connection := NewMockConnection()
 	defer connection.Close()
-	spyLogger := SpyLogger{calls: make([]LogCall, 0)}
+	spyLogger := NewSpyLogger()
 	recv := make(chan domain.Messager, 3)
-	client := infrastructure.NewClient("1", "Jane Doe", connection, recv, configuration, &spyLogger)
+	client := infrastructure.NewClient("1", "Jane Doe", connection, recv, nil, configuration, spyLogger)
 
 	go client.ReadMessages(ctx)
 
@@ -149,4 +153,35 @@ func TestClient_ReadMessagesPumpSendsMessagesToRecv(t *testing.T) {
 	assert.Equal(t, userMsg.Message, receivedMsg.Message)
 	assert.Equal(t, userMsg.Timestamp.Truncate(time.Second), receivedMsg.Timestamp.Truncate(time.Second))
 	assert.Equal(t, userMsg.From, receivedMsg.From)
+}
+
+func TestClient_WriteMessagesPumpSendsMessagesToRecv(t *testing.T) {
+	ctx := t.Context()
+
+	configuration := NewTestingClientConfiguration()
+	connection := NewMockConnection()
+	spyLogger := NewSpyLogger()
+	recv := make(chan domain.Messager, 3)
+	send := make(chan domain.Messager, 3)
+	client := infrastructure.NewClient("1", "Jane Doe", connection, recv, send, configuration, spyLogger)
+
+	go client.WriteMessages(ctx)
+
+	userMsg := domain.NewUserMessage("Hello test", time.Now(), "Jane Doe")
+	userMsgBytes := mustMarshallMessage(userMsg)
+	// imitate notifier sending a single user message
+	// it is then expected to be marshalled and written as a text message
+	client.Send() <- userMsg
+
+	time.Sleep(time.Millisecond * 50)
+
+	assert.Len(t, spyLogger.Errors(), 0)
+
+	select {
+	case writtenMsg := <-connection.writeChan:
+		assert.Equal(t, TextMessage, writtenMsg.messageType)
+		assert.Equal(t, userMsgBytes, writtenMsg.data)
+	case <-time.After(50 * time.Millisecond):
+		t.Fatal("message was not written")
+	}
 }

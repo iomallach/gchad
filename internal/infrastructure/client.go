@@ -24,6 +24,7 @@ type ClientConfiguration struct {
 	PingPeriod      time.Duration
 	RecieveChanWait time.Duration
 	SendChannelSize int
+	RecvChannelSize int
 }
 
 type Client struct {
@@ -49,12 +50,20 @@ func (c *Client) Start(ctx context.Context) {
 	go c.WriteMessages(ctx)
 }
 
-func NewClient(id string, name string, conn Connection, recv chan domain.Messager, configuration ClientConfiguration, logger application.Logger) *Client {
+func NewClient(
+	id string,
+	name string,
+	conn Connection,
+	recv chan domain.Messager,
+	send chan domain.Messager,
+	configuration ClientConfiguration,
+	logger application.Logger,
+) *Client {
 	return &Client{
 		id:            id,
 		name:          name,
 		conn:          conn,
-		send:          make(chan domain.Messager, configuration.SendChannelSize),
+		send:          send,
 		recv:          recv,
 		configuration: configuration,
 		logger:        logger,
@@ -64,6 +73,11 @@ func NewClient(id string, name string, conn Connection, recv chan domain.Message
 // TODO: Need to figure out graceful shutdown of both pumps
 func (c *Client) ReadMessages(ctx context.Context) {
 	for {
+		if ctx.Err() != nil {
+			c.logger.Debug("cancelling read pump", map[string]any{"client_id": c.Id()})
+			return
+		}
+
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			c.logger.Error(
@@ -71,11 +85,6 @@ func (c *Client) ReadMessages(ctx context.Context) {
 				map[string]any{"client_id": c.Id()},
 			)
 			continue
-		}
-
-		if ctx.Err() != nil {
-			c.logger.Debug("cancelling read pump", map[string]any{"client_id": c.Id()})
-			return
 		}
 
 		domainMessage, err := domain.UnmarshalMessage(message)
