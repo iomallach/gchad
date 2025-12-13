@@ -48,6 +48,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn, err := h.upgrader.Upgrade(w, r, nil)
+	h.logger.Info("upgraded connection to websocket", map[string]any{})
 	if err != nil {
 		h.logger.Error(fmt.Sprintf("upgrade failed: %s", err.Error()), map[string]any{})
 		return
@@ -58,6 +59,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	recv := make(chan domain.Messager, h.clientConfig.RecvChannelSize)
 	send := make(chan domain.Messager, h.clientConfig.SendChannelSize)
 	client := NewClient(clientId, clientName, wsConn, recv, send, h.clientConfig, h.logger)
+	h.logger.Info(fmt.Sprintf("client %s connected", clientId), map[string]any{})
 
 	h.notifier.RegisterClient(client)
 	h.chatService.EnterRoom(clientId, clientName)
@@ -66,6 +68,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go client.WriteMessages(ctx)
 	go h.forwardMessages(ctx, clientId, recv)
+	h.logger.Info(fmt.Sprintf("client %s started", clientId), map[string]any{})
 
 	// TODO: blocks this goroutine, need to unblock it later
 	client.ReadMessages(ctx)
