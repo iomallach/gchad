@@ -64,11 +64,16 @@ func main() {
 
 	notifier.Start(ctx)
 	chatService.Start(ctx)
+
 	http.HandleFunc("/chat", handler.ServeHTTP)
+
+	server := &http.Server{
+		Addr: ":8080",
+	}
 
 	go func() {
 		logger.Info("server starting, serving the chat at /chat", map[string]any{"port": "8080"})
-		if err := http.ListenAndServe(":8080", nil); err != nil {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("server failed", map[string]any{"error": err.Error()})
 		}
 	}()
@@ -76,7 +81,13 @@ func main() {
 	<-sigChan
 	logger.Info("Received signal, shutting down", map[string]any{})
 	cancel()
-	time.Sleep(2 * time.Second)
 
-	os.Exit(0)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error("server shutdown error", map[string]any{"error": err.Error()})
+	}
+
+	logger.Info("server stopped", map[string]any{})
 }
