@@ -41,15 +41,15 @@ func NewHandler(
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	conn, err := h.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		h.logger.Error(fmt.Sprintf("upgrade failed: %s", err.Error()), map[string]any{})
-		return
-	}
-
 	clientName := r.URL.Query().Get("name")
 	if clientName == "" {
 		h.logger.Error("client name not provided, skipping", map[string]any{})
+		return
+	}
+
+	conn, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		h.logger.Error(fmt.Sprintf("upgrade failed: %s", err.Error()), map[string]any{})
 		return
 	}
 
@@ -67,6 +67,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go client.WriteMessages(ctx)
 	go h.forwardMessages(ctx, clientId, recv)
 
+	// TODO: blocks this goroutine, need to unblock it later
 	client.ReadMessages(ctx)
 	cancel()
 	h.chatService.LeaveRoom(clientId)
