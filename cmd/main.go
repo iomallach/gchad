@@ -32,11 +32,6 @@ func main() {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		logger.Info("Received signal, shutting down", map[string]any{})
-		cancel()
-	}()
 
 	room := application.NewChatRoom("1", "General", application.NewClientRegistry())
 	// TODO: maybe the notifier shouldn't be exposed here at all, and shall handle
@@ -67,11 +62,21 @@ func main() {
 		ctx,
 	)
 
+	notifier.Start(ctx)
+	chatService.Start(ctx)
 	http.HandleFunc("/chat", handler.ServeHTTP)
 
-	logger.Info("server starting, serving the chat at /chat", map[string]any{"port": "8080"})
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		logger.Error("server failed", map[string]any{"error": err.Error()})
-	}
+	go func() {
+		logger.Info("server starting, serving the chat at /chat", map[string]any{"port": "8080"})
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			logger.Error("server failed", map[string]any{"error": err.Error()})
+		}
+	}()
+
+	<-sigChan
+	logger.Info("Received signal, shutting down", map[string]any{})
+	cancel()
+	time.Sleep(2 * time.Second)
+
+	os.Exit(0)
 }
