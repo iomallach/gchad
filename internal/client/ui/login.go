@@ -44,6 +44,8 @@ type Login struct {
 	textAboveInput string
 	input          textinput.Model
 	bindings       LoginScreenKeymap
+	width          int
+	height         int
 }
 
 func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap) Login {
@@ -71,6 +73,10 @@ func (l Login) Init() tea.Cmd {
 
 func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		l.width = msg.Width
+		l.height = msg.Height
+		return l, nil
 	case tea.KeyMsg:
 		l.input.Focus()
 		switch {
@@ -98,5 +104,7 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (l Login) View() string {
 	styledText := textAboveStyle.Render(l.textAboveInput)
 	content := fmt.Sprintf("%s\n\n%s", styledText, l.input.View())
-	return rootStyle.Render(content)
+	box := rootStyle.Render(content)
+
+	return lipgloss.Place(l.width, l.height/3, lipgloss.Center, lipgloss.Center, box)
 }
