@@ -82,6 +82,7 @@ func (h *Handler) forwardMessages(ctx context.Context, clientId string, recv cha
 		select {
 		case msg, ok := <-recv:
 			if !ok {
+				h.logger.Debug("client has closed, exiting forwardMessages", map[string]any{"client_id": clientId})
 				return
 			}
 			if userMsg, ok := msg.(*domain.UserMessage); ok {

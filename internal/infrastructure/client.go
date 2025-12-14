@@ -72,6 +72,9 @@ func NewClient(
 
 // TODO: Need to figure out graceful shutdown of both pumps
 func (c *Client) ReadMessages(ctx context.Context) {
+	defer close(c.recv)
+	defer c.conn.Close()
+
 	for {
 		if ctx.Err() != nil {
 			c.logger.Debug("cancelling read pump", map[string]any{"client_id": c.Id()})
@@ -84,7 +87,7 @@ func (c *Client) ReadMessages(ctx context.Context) {
 				fmt.Sprintf("could not read the message: %s", err.Error()),
 				map[string]any{"client_id": c.Id()},
 			)
-			continue
+			return
 		}
 
 		domainMessage, err := domain.UnmarshalMessage(message)
@@ -109,21 +112,16 @@ func (c *Client) WriteMessages(ctx context.Context) {
 	ticker := time.NewTicker(c.configuration.PingPeriod)
 	defer ticker.Stop()
 	defer c.conn.Close()
+	defer close(c.send)
 
 	for {
 		select {
 		case <-ctx.Done():
-			if err := c.conn.WriteCloseMessage([]byte{}); err != nil {
-				c.logger.Error(
-					fmt.Sprintf("failed to write close message: %s", err.Error()),
-					map[string]any{"client_id": c.Id()},
-				)
-				return
-			}
+			c.logger.Debug("cancelling write pump", map[string]any{"client_id": c.Id()})
 			return
 		case domanMessage, ok := <-c.send:
 			if !ok {
-				c.logger.Error(
+				c.logger.Info(
 					"send channel has been closed. Sending close message and terminating",
 					map[string]any{"client_id": c.Id()},
 				)
@@ -147,6 +145,7 @@ func (c *Client) WriteMessages(ctx context.Context) {
 			}
 		case <-ticker.C:
 			_ = c.conn.SetWriteDeadline(time.Now().Add(c.configuration.WriteWait))
+			c.logger.Debug("writing ping message", map[string]any{"client_id": c.Id()})
 			if err := c.conn.WritePingMessage(nil); err != nil {
 				c.logger.Error(fmt.Sprintf("failed to write ping message: %s", err.Error()), map[string]any{"client_id": c.Id()})
 				return
