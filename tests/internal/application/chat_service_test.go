@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iomallach/gchad/internal/application"
-	"github.com/iomallach/gchad/internal/domain"
+	"github.com/iomallach/gchad/internal/server/application"
+	"github.com/iomallach/gchad/internal/server/domain"
 	"github.com/stretchr/testify/assert"
 )
 

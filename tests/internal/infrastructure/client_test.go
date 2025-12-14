@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iomallach/gchad/internal/domain"
-	"github.com/iomallach/gchad/internal/infrastructure"
+	"github.com/iomallach/gchad/internal/server/domain"
+	"github.com/iomallach/gchad/internal/server/infrastructure"
 	"github.com/stretchr/testify/assert"
 )
 

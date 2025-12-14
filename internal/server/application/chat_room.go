@@ -3,7 +3,7 @@ package application
 import (
 	"sync"
 
-	"github.com/iomallach/gchad/internal/domain"
+	"github.com/iomallach/gchad/internal/server/domain"
 )
 
 type ChatRoom struct {

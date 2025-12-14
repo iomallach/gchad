@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/iomallach/gchad/internal/application"
-	"github.com/iomallach/gchad/internal/infrastructure"
+	"github.com/iomallach/gchad/internal/server/application"
+	"github.com/iomallach/gchad/internal/server/infrastructure"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

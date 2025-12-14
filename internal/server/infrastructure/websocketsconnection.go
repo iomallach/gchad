@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/iomallach/gchad/internal/application"
+	"github.com/iomallach/gchad/internal/server/application"
 )
 
 var (

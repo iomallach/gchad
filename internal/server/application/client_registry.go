@@ -1,6 +1,6 @@
 package application
 
-import "github.com/iomallach/gchad/internal/domain"
+import "github.com/iomallach/gchad/internal/server/domain"
 
 type ClientRegistry struct {
 	clients map[string]*domain.Client
