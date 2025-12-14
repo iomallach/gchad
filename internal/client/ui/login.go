@@ -59,6 +59,7 @@ func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap) Login 
 		}
 		return nil
 	}
+	input.Focus()
 
 	return Login{
 		textAboveInput: textAboveInput,
@@ -78,7 +79,6 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		l.height = msg.Height
 		return l, nil
 	case tea.KeyMsg:
-		l.input.Focus()
 		switch {
 		case key.Matches(msg, l.bindings.CtrlC):
 			return l, tea.Quit
@@ -90,6 +90,9 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				l.textAboveInput = fmt.Sprintf("going to connect as %s", value)
 				l.input.Reset()
+				return l, func() tea.Msg {
+					return loginSucceeded{}
+				}
 			}
 			return l, nil
 		}
