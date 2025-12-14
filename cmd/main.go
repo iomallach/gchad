@@ -16,12 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	writeWait  = 10 * time.Second
-	pongWait   = 60 * time.Second
-	pingPeriod = (pongWait * 9) / 10
-)
-
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
