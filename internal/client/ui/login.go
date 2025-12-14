@@ -7,7 +7,16 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
+
+var rootStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.RoundedBorder()).
+	Padding(2)
+
+var textAboveStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#FF5F87")).
+	Bold(true)
 
 type LoginScreenKeymap struct {
 	CtrlC key.Binding
@@ -87,5 +96,7 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (l Login) View() string {
-	return fmt.Sprintf("%s\n\n%s", l.textAboveInput, l.input.View())
+	styledText := textAboveStyle.Render(l.textAboveInput)
+	content := fmt.Sprintf("%s\n\n%s", styledText, l.input.View())
+	return rootStyle.Render(content)
 }
