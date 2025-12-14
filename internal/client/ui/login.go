@@ -9,18 +9,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type loginScreenKeymap struct {
+type LoginScreenKeymap struct {
 	CtrlC key.Binding
 	Enter key.Binding
 }
 
-func (km *loginScreenKeymap) FullHelp() [][]key.Binding {
+func (km *LoginScreenKeymap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{km.CtrlC, km.Enter},
 	}
 }
 
-var defaultLoginScreenKeymap = loginScreenKeymap{
+var DefaultLoginScreenKeymap = LoginScreenKeymap{
 	CtrlC: key.NewBinding(
 		key.WithKeys("ctrl+c"),
 		key.WithHelp("ctrl+c", "quit"),
@@ -34,9 +34,10 @@ var defaultLoginScreenKeymap = loginScreenKeymap{
 type Login struct {
 	textAboveInput string
 	input          textinput.Model
+	bindings       LoginScreenKeymap
 }
 
-func InitialLoginModel(textAboveInput string) Login {
+func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap) Login {
 	input := textinput.New()
 	input.CharLimit = 20
 	input.Width = 40
@@ -51,6 +52,7 @@ func InitialLoginModel(textAboveInput string) Login {
 	return Login{
 		textAboveInput: textAboveInput,
 		input:          input,
+		bindings:       bindings,
 	}
 }
 
@@ -63,9 +65,9 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		l.input.Focus()
 		switch {
-		case key.Matches(msg, defaultLoginScreenKeymap.CtrlC):
+		case key.Matches(msg, l.bindings.CtrlC):
 			return l, tea.Quit
-		case key.Matches(msg, defaultLoginScreenKeymap.Enter):
+		case key.Matches(msg, l.bindings.Enter):
 			value := l.input.Value()
 			err := l.input.Validate(value)
 			if err != nil {
