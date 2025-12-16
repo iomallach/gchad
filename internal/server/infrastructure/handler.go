@@ -8,7 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/iomallach/gchad/internal/server/application"
 	"github.com/iomallach/gchad/internal/server/domain"
-	"github.com/iomallach/gchad/pkg/network"
 )
 
 type Handler struct {
@@ -56,7 +55,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientId := h.idGen()
-	wsConn := network.NewWebsocketsConnection(conn, h.logger)
+	wsConn := NewWebsocketsConnection(conn, h.logger)
 	recv := make(chan domain.Messager, h.clientConfig.RecvChannelSize)
 	send := make(chan domain.Messager, h.clientConfig.SendChannelSize)
 	client := NewClient(clientId, clientName, wsConn, recv, send, h.clientConfig, h.logger)
