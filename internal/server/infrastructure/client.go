@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/iomallach/gchad/internal/server/application"
 	"github.com/iomallach/gchad/internal/server/domain"
+	"github.com/iomallach/gchad/pkg/logging"
 )
 
 type Connection interface {
@@ -34,7 +34,7 @@ type Client struct {
 	send          chan domain.Messager
 	recv          chan domain.Messager
 	configuration ClientConfiguration
-	logger        application.Logger
+	logger        logging.Logger
 }
 
 func (c *Client) Id() string {
@@ -57,7 +57,7 @@ func NewClient(
 	recv chan domain.Messager,
 	send chan domain.Messager,
 	configuration ClientConfiguration,
-	logger application.Logger,
+	logger logging.Logger,
 ) *Client {
 	return &Client{
 		id:            id,

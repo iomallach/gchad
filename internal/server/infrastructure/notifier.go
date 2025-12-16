@@ -6,6 +6,7 @@ import (
 
 	"github.com/iomallach/gchad/internal/server/application"
 	"github.com/iomallach/gchad/internal/server/domain"
+	"github.com/iomallach/gchad/pkg/logging"
 )
 
 type ClientNotifier struct {
@@ -13,10 +14,10 @@ type ClientNotifier struct {
 	clients    map[string]*Client
 	register   chan *Client
 	unregister chan string
-	logger     application.Logger
+	logger     logging.Logger
 }
 
-func NewClientNotifier(logger application.Logger, registry map[string]*Client) *ClientNotifier {
+func NewClientNotifier(logger logging.Logger, registry map[string]*Client) *ClientNotifier {
 	return &ClientNotifier{
 		mu:         sync.RWMutex{},
 		clients:    registry,
@@ -26,7 +27,7 @@ func NewClientNotifier(logger application.Logger, registry map[string]*Client) *
 	}
 }
 
-func NewClientNotifierFromExistingClients(logger application.Logger, clients map[string]*Client) *ClientNotifier {
+func NewClientNotifierFromExistingClients(logger logging.Logger, clients map[string]*Client) *ClientNotifier {
 	return &ClientNotifier{
 		mu:         sync.RWMutex{},
 		clients:    clients,

@@ -1,4 +1,4 @@
-package application
+package logging
 
 type Logger interface {
 	Debug(msg string, fields map[string]any)

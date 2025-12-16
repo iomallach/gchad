@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/iomallach/gchad/internal/server/application"
 	"github.com/iomallach/gchad/internal/server/domain"
+	"github.com/iomallach/gchad/pkg/logging"
 )
 
 type Handler struct {
@@ -16,7 +17,7 @@ type Handler struct {
 	notifier     *ClientNotifier
 	clientConfig ClientConfiguration
 	idGen        application.IdGen
-	logger       application.Logger
+	logger       logging.Logger
 	appCtx       context.Context
 }
 
@@ -26,7 +27,7 @@ func NewHandler(
 	notifier *ClientNotifier,
 	clientConfig ClientConfiguration,
 	idGen application.IdGen,
-	logger application.Logger,
+	logger logging.Logger,
 	appCtx context.Context,
 ) *Handler {
 	return &Handler{
