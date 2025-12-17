@@ -7,16 +7,8 @@ import (
 
 	"github.com/iomallach/gchad/internal/server/domain"
 	"github.com/iomallach/gchad/pkg/logging"
+	"github.com/iomallach/gchad/pkg/network"
 )
-
-type Connection interface {
-	Close() error
-	ReadMessage() (int, []byte, error)
-	SetWriteDeadline(time.Time) error
-	WriteCloseMessage([]byte) error
-	WriteTextMessage([]byte) error
-	WritePingMessage([]byte) error
-}
 
 type ClientConfiguration struct {
 	WriteWait       time.Duration
@@ -30,7 +22,7 @@ type ClientConfiguration struct {
 type Client struct {
 	id            string
 	name          string
-	conn          Connection
+	conn          network.Connection
 	send          chan domain.Messager
 	recv          chan domain.Messager
 	configuration ClientConfiguration
@@ -53,7 +45,7 @@ func (c *Client) Start(ctx context.Context) {
 func NewClient(
 	id string,
 	name string,
-	conn Connection,
+	conn network.Connection,
 	recv chan domain.Messager,
 	send chan domain.Messager,
 	configuration ClientConfiguration,

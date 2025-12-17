@@ -1,11 +1,10 @@
-package infrastructure
+package network
 
 import (
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/iomallach/gchad/pkg/logging"
-	"github.com/iomallach/gchad/pkg/network"
 )
 
 type WebsocketsConnection struct {
@@ -24,7 +23,7 @@ func (ws *WebsocketsConnection) Close() error {
 func (ws *WebsocketsConnection) ReadMessage() (int, []byte, error) {
 	bytesRead, msg, err := ws.conn.ReadMessage()
 	if err != nil {
-		return bytesRead, msg, network.TranslateReadError(err)
+		return bytesRead, msg, TranslateReadError(err)
 	}
 
 	ws.logger.Debug("read message", map[string]any{"bytes_read": bytesRead, "message": string(msg)})
@@ -38,7 +37,7 @@ func (ws *WebsocketsConnection) SetWriteDeadline(t time.Time) error {
 
 func (ws *WebsocketsConnection) writeMessage(msgCode int, data []byte) error {
 	err := ws.conn.WriteMessage(msgCode, data)
-	return network.TranslateWriteError(err)
+	return TranslateWriteError(err)
 }
 
 func (ws *WebsocketsConnection) WriteCloseMessage(data []byte) error {
