@@ -5,9 +5,7 @@ import (
 	"github.com/iomallach/gchad/internal/client/application"
 )
 
-type loginSucceeded struct {
-	name string
-}
+type switchToChat struct{}
 
 type disconnected struct{}
 
@@ -50,19 +48,17 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.screenSize.width = msg.Width
 		a.screenSize.height = msg.Height
+		updatedLoginScreen, loginUpdCmd := a.loginScreen.Update(msg)
+		updatedChatScreen, chatUpdCmd := a.chatScreen.Update(msg)
+		a.loginScreen = updatedLoginScreen.(Login)
+		a.chatScreen = updatedChatScreen.(Chat)
 
-	case loginSucceeded:
+		return a, tea.Batch(loginUpdCmd, chatUpdCmd)
+
+	case switchToChat:
+		// this activates the switch below and delivers the message over to the chat screen
 		a.activeSession = chatSession
-		a.name = msg.name
-		return a, func() tea.Msg {
-			return tea.WindowSizeMsg{Width: a.screenSize.width, Height: a.screenSize.height}
-		}
 
-	case disconnected:
-		a.activeSession = loginSession
-		a.loginScreen = InitialLoginModel("Who are you?", DefaultLoginScreenKeymap)
-		a.name = ""
-		return a, nil
 	}
 
 	switch a.activeSession {

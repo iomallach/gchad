@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/iomallach/gchad/internal/client/application"
 )
 
 var rootStyle = lipgloss.NewStyle().
@@ -17,6 +18,20 @@ var rootStyle = lipgloss.NewStyle().
 var textAboveStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#FF5F87")).
 	Bold(true)
+
+type failedToConnectToChat struct {
+	err error
+}
+
+func connectToChatCmd(chatClient application.ChatClient, url string) tea.Cmd {
+	return func() tea.Msg {
+		if err := chatClient.Connect(url); err != nil {
+			return failedToConnectToChat{err}
+		}
+
+		return switchToChat{}
+	}
+}
 
 type LoginScreenKeymap struct {
 	CtrlC key.Binding
@@ -41,6 +56,7 @@ var DefaultLoginScreenKeymap = LoginScreenKeymap{
 }
 
 type Login struct {
+	chatClient     application.ChatClient
 	textAboveInput string
 	input          textinput.Model
 	bindings       LoginScreenKeymap
@@ -48,7 +64,7 @@ type Login struct {
 	height         int
 }
 
-func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap) Login {
+func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap, chatClient application.ChatClient) Login {
 	input := textinput.New()
 	input.CharLimit = 20
 	input.Width = 40
@@ -65,6 +81,7 @@ func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap) Login 
 		textAboveInput: textAboveInput,
 		input:          input,
 		bindings:       bindings,
+		chatClient:     chatClient,
 	}
 }
 
@@ -74,34 +91,49 @@ func (l Login) Init() tea.Cmd {
 
 func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
 	case tea.WindowSizeMsg:
 		l.width = msg.Width
 		l.height = msg.Height
+
 		return l, nil
+
 	case tea.KeyMsg:
 		switch {
+
 		case key.Matches(msg, l.bindings.CtrlC):
 			return l, tea.Quit
+
 		case key.Matches(msg, l.bindings.Enter):
 			value := l.input.Value()
 			err := l.input.Validate(value)
+
 			if err != nil {
 				l.textAboveInput = fmt.Sprintf("invalid username: %s", err.Error())
 			} else {
 				l.textAboveInput = fmt.Sprintf("going to connect as %s", value)
 				l.input.Reset()
-				return l, func() tea.Msg {
-					return loginSucceeded{}
-				}
+
+				return l, connectToChatCmd(l.chatClient, fmt.Sprintf("ws://localhost:8080/chat?name=%s", value))
 			}
+
 			return l, nil
+		default:
+			var cmd tea.Cmd
+			l.input, cmd = l.input.Update(msg)
+
+			return l, cmd
+
 		}
+
+	case failedToConnectToChat:
+		// TODO:display the error somewhere? Popup? Press any key to continue?
+		l.textAboveInput = fmt.Sprintf("failed to connect: %s", msg.err.Error())
+
+		return l, nil
 	}
 
-	var cmd tea.Cmd
-	l.input, cmd = l.input.Update(msg)
-
-	return l, cmd
+	return l, nil
 }
 
 func (l Login) View() string {

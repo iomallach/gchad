@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/iomallach/gchad/internal/client/application"
 )
 
 type ChatScreenKeymap struct {
@@ -35,16 +36,38 @@ var DefaultChatScreenKeymap = ChatScreenKeymap{
 	),
 }
 
+type newMessageReceived struct {
+	msg any
+}
+
+type newErrorReceived struct {
+	err error
+}
+
+func pollForChatMessageCmd(chatClient application.ChatClient) tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case msg := <-chatClient.InboundMessages():
+			return newMessageReceived{msg}
+		case err := <-chatClient.Errors():
+			return newErrorReceived{err}
+		}
+	}
+}
+
 type Chat struct {
 	input        textinput.Model
 	chatViewPort viewport.Model
 	ready        bool
 	bindings     ChatScreenKeymap
 	inputFocused bool
+	chatClient   application.ChatClient
+	// TODO: this has to be a struct or something that manages the chat properly
+	messages []any
 }
 
-func InitialChatModel(bindings ChatScreenKeymap) Chat {
-	return Chat{bindings: bindings, inputFocused: true}
+func InitialChatModel(bindings ChatScreenKeymap, chatClient application.ChatClient) Chat {
+	return Chat{bindings: bindings, inputFocused: true, chatClient: chatClient, messages: make([]any, 0)}
 }
 
 func (c Chat) Init() tea.Cmd {
@@ -55,8 +78,10 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+
 	case tea.WindowSizeMsg:
 		c, cmd = c.updateOnWindowSizeChange(msg)
+
 	case tea.KeyMsg:
 		if key.Matches(msg, c.bindings.CtrlD) {
 			return c, func() tea.Msg {
@@ -83,6 +108,13 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return c, tea.Quit
 			}
 		}
+
+	case newMessageReceived:
+		c.messages = append(c.messages, msg.msg)
+		// Then rendering takes care of it?
+
+	case switchToChat:
+		return c, pollForChatMessageCmd(c.chatClient)
 	}
 
 	return c, cmd
