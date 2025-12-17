@@ -59,13 +59,13 @@ func NewChatClient(
 }
 
 func (c *ChatClient) Connect(url string) error {
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	conn, err := c.dialer.Dial(url)
 	if err != nil {
 		return err
 	}
 	c.logger.Info(fmt.Sprintf("Successfully connected to %s", url), map[string]any{})
 
-	c.conn = network.NewWebsocketsConnection(conn, c.logger)
+	c.conn = conn
 	return nil
 }
 
