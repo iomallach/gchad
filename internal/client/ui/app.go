@@ -1,6 +1,9 @@
 package ui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/iomallach/gchad/internal/client/application"
+)
 
 type loginSucceeded struct {
 	name string
@@ -8,11 +11,11 @@ type loginSucceeded struct {
 
 type disconnected struct{}
 
-type activeScreen int
+type activeSession int
 
 const (
-	loginScreen = iota
-	chatScreen
+	loginSession = iota
+	chatSession
 )
 
 type screenSize struct {
@@ -21,19 +24,20 @@ type screenSize struct {
 }
 
 type App struct {
-	loginScreen  Login
-	chatScreen   Chat
-	screenSize   screenSize
-	activeScreen activeScreen
-	name         string
+	loginScreen   Login
+	chatScreen    Chat
+	screenSize    screenSize
+	activeSession activeSession
+	name          string
+	chatClient    application.ChatClient
 }
 
-func InitialAppModel() App {
+func InitialAppModel(loginScreen Login, chatScreen Chat, chatClient application.ChatClient) App {
 	return App{
-		loginScreen:  InitialLoginModel("Who are you?", DefaultLoginScreenKeymap),
-		chatScreen:   InitialChatModel(DefaultChatScreenKeymap),
-		activeScreen: loginScreen,
-		screenSize:   screenSize{},
+		loginScreen:   loginScreen,
+		chatScreen:    chatScreen,
+		activeSession: loginSession,
+		screenSize:    screenSize{},
 	}
 }
 func (a App) Init() tea.Cmd {
@@ -48,25 +52,25 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.screenSize.height = msg.Height
 
 	case loginSucceeded:
-		a.activeScreen = chatScreen
+		a.activeSession = chatSession
 		a.name = msg.name
 		return a, func() tea.Msg {
 			return tea.WindowSizeMsg{Width: a.screenSize.width, Height: a.screenSize.height}
 		}
 
 	case disconnected:
-		a.activeScreen = loginScreen
+		a.activeSession = loginSession
 		a.loginScreen = InitialLoginModel("Who are you?", DefaultLoginScreenKeymap)
 		a.name = ""
 		return a, nil
 	}
 
-	switch a.activeScreen {
-	case loginScreen:
+	switch a.activeSession {
+	case loginSession:
 		updatedLoginScreen, cmd := a.loginScreen.Update(msg)
 		a.loginScreen = updatedLoginScreen.(Login)
 		return a, cmd
-	case chatScreen:
+	case chatSession:
 		updatedChatScreen, cmd := a.chatScreen.Update(msg)
 		a.chatScreen = updatedChatScreen.(Chat)
 		return a, cmd
@@ -76,10 +80,10 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a App) View() string {
-	switch a.activeScreen {
-	case loginScreen:
+	switch a.activeSession {
+	case loginSession:
 		return a.loginScreen.View()
-	case chatScreen:
+	case chatSession:
 		return a.chatScreen.View()
 	default:
 		panic("unknown active screen")
