@@ -24,12 +24,24 @@ type ChatMessage struct {
 	Text      string    `json:"text"`
 }
 
+func (m ChatMessage) MessageType() MessageType {
+	return TypeChatMessage
+}
+
 type UserJoinedMessage struct {
 	Timestamp time.Time
 	Name      string
 }
 
+func (m UserJoinedMessage) MessageType() MessageType {
+	return TypeUserJoinedMessage
+}
+
 type UserLeftMessage struct {
 	Timestamp time.Time
 	Name      string
+}
+
+func (m UserLeftMessage) MessageType() MessageType {
+	return TypeUserLeftMessage
 }
