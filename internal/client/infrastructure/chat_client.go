@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/iomallach/gchad/internal/client/application"
+	"github.com/iomallach/gchad/internal/client/domain"
 	"github.com/iomallach/gchad/pkg/logging"
 	"github.com/iomallach/gchad/pkg/network"
 )
@@ -36,16 +38,16 @@ type ChatClient struct {
 	dialer Dialer
 	logger logging.Logger
 
-	recv   chan any // TODO: use domain stuff here later
+	recv   chan application.Message
 	errors chan error
 
-	send chan any
+	send chan domain.ChatMessage
 }
 
 func NewChatClient(
 	dialer Dialer,
-	recv chan any,
-	send chan any,
+	recv chan application.Message,
+	send chan domain.ChatMessage,
 	errors chan error,
 	logger logging.Logger,
 ) *ChatClient {
@@ -73,16 +75,20 @@ func (c *ChatClient) Disconnect() error {
 	return c.conn.Close()
 }
 
-func (c *ChatClient) SendMessage(message string) {
+func (c *ChatClient) SendMessage(message string, name string) {
 	select {
-	case c.send <- message:
+	case c.send <- domain.ChatMessage{
+		From:      name,
+		Timestamp: time.Now(),
+		Text:      message,
+	}:
 		c.logger.Debug("message sent", map[string]any{"message": message})
 	case <-time.After(50 * time.Millisecond):
 		c.logger.Error("failed to send message, channel is full", map[string]any{"message": message})
 	}
 }
 
-func (c *ChatClient) InboundMessages() <-chan any {
+func (c *ChatClient) InboundMessages() <-chan application.Message {
 	return c.recv
 }
 
