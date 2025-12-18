@@ -7,7 +7,7 @@ type Message interface {
 }
 
 type ChatClient interface {
-	Connect(ulr string) error
+	Connect() error
 	Disconnect() error
 	SendMessage(message string)
 	InboundMessages() <-chan Message
