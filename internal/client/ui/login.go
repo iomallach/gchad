@@ -23,9 +23,9 @@ type failedToConnectToChat struct {
 	err error
 }
 
-func connectToChatCmd(chatClient application.ChatClient, url string) tea.Cmd {
+func connectToChatCmd(chatClient application.ChatClient) tea.Cmd {
 	return func() tea.Msg {
-		if err := chatClient.Connect(url); err != nil {
+		if err := chatClient.Connect(); err != nil {
 			return failedToConnectToChat{err}
 		}
 
@@ -114,7 +114,7 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				l.textAboveInput = fmt.Sprintf("going to connect as %s", value)
 				l.input.Reset()
 
-				return l, connectToChatCmd(l.chatClient, fmt.Sprintf("ws://localhost:8080/chat?name=%s", value))
+				return l, connectToChatCmd(l.chatClient)
 			}
 
 			return l, nil

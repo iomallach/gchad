@@ -26,8 +26,6 @@ type App struct {
 	chatScreen    Chat
 	screenSize    screenSize
 	activeSession activeSession
-	name          string
-	chatClient    application.ChatClient
 }
 
 func InitialAppModel(loginScreen Login, chatScreen Chat, chatClient application.ChatClient) App {
@@ -58,6 +56,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case switchToChat:
 		// this activates the switch below and delivers the message over to the chat screen
 		a.activeSession = chatSession
+
+	case disconnected:
+		a.activeSession = loginSession
 
 	}
 

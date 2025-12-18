@@ -2,12 +2,14 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/iomallach/gchad/internal/client/application"
+	"github.com/iomallach/gchad/internal/client/domain"
 )
 
 type ChatScreenKeymap struct {
@@ -37,7 +39,7 @@ var DefaultChatScreenKeymap = ChatScreenKeymap{
 }
 
 type newMessageReceived struct {
-	msg any
+	msg application.Message
 }
 
 type newErrorReceived struct {
@@ -62,12 +64,12 @@ type Chat struct {
 	bindings     ChatScreenKeymap
 	inputFocused bool
 	chatClient   application.ChatClient
-	// TODO: this has to be a struct or something that manages the chat properly
-	messages []any
+	// TODO: this has to be a struct or something that manages the chat properly?
+	messages []string
 }
 
 func InitialChatModel(bindings ChatScreenKeymap, chatClient application.ChatClient) Chat {
-	return Chat{bindings: bindings, inputFocused: true, chatClient: chatClient, messages: make([]any, 0)}
+	return Chat{bindings: bindings, inputFocused: true, chatClient: chatClient, messages: make([]string, 0)}
 }
 
 func (c Chat) Init() tea.Cmd {
@@ -84,6 +86,7 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if key.Matches(msg, c.bindings.CtrlD) {
+			_ = c.chatClient.Disconnect() // swallow the error?
 			return c, func() tea.Msg {
 				return disconnected{}
 			}
@@ -91,11 +94,18 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if c.inputFocused {
 			switch {
 			case key.Matches(msg, c.bindings.CtrlC):
+				_ = c.chatClient.Disconnect() // swallow the error, we're quitting
 				return c, tea.Quit
+
 			case key.Matches(msg, c.bindings.Enter):
+				go c.chatClient.SendMessage(c.input.Value())
+				c.input.Reset()
+				return c, nil
+
 			case key.Matches(msg, c.bindings.Esc):
 				c.inputFocused = false
 				c.input.Blur()
+
 			default:
 				c.input, cmd = c.input.Update(msg)
 			}
@@ -110,8 +120,10 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case newMessageReceived:
-		c.messages = append(c.messages, msg.msg)
-		// Then rendering takes care of it?
+		c.updateMessages(msg.msg)
+		c.chatViewPort.SetContent(strings.Join(c.messages, "\n"))
+
+		return c, pollForChatMessageCmd(c.chatClient)
 
 	case switchToChat:
 		return c, pollForChatMessageCmd(c.chatClient)
@@ -126,7 +138,6 @@ func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
 		c.input.Width = msg.Width - 2
 		c.input.Focus()
 		c.chatViewPort = viewport.New(msg.Width-2, msg.Height-2)
-		c.chatViewPort.SetContent("There is some initial context/nAnd some more")
 
 		c.ready = true
 	} else {
@@ -136,6 +147,19 @@ func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
 	}
 
 	return c, nil
+}
+
+func (c *Chat) updateMessages(msg application.Message) {
+	switch msg := msg.(type) {
+	case domain.ChatMessage:
+		c.messages = append(c.messages, fmt.Sprintf("%s %s: %s", msg.Timestamp, msg.From, msg.Text))
+
+	case domain.UserJoinedMessage:
+		c.messages = append(c.messages, fmt.Sprintf("%s %s joined!", msg.Timestamp, msg.Name))
+
+	case domain.UserLeftMessage:
+		c.messages = append(c.messages, fmt.Sprintf("%s %s left!", msg.Timestamp, msg.Name))
+	}
 }
 
 func (c Chat) View() string {
