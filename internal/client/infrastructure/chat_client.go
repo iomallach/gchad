@@ -33,6 +33,41 @@ func (d *WebsocketsDialer) Dial(url string) (network.Connection, error) {
 	return network.NewWebsocketsConnection(conn, d.logger), nil
 }
 
+type QueryParam struct {
+	key   string
+	value string
+}
+
+func NewQueryParam(key, value string) QueryParam {
+	return QueryParam{key, value}
+}
+
+func (qp *QueryParam) String() string {
+	return fmt.Sprintf("%s=%s", qp.key, qp.value)
+}
+
+type Url struct {
+	schema     string
+	base       string
+	path       string
+	port       int
+	queryParam QueryParam
+}
+
+func NewUrl(schema, base, path string, port int, queryParam QueryParam) Url {
+	return Url{schema, base, path, port, queryParam}
+}
+
+func (url *Url) String() string {
+	subUrl := fmt.Sprintf("%s://%s:%d", url.schema, url.base, url.port)
+
+	if url.path != "" {
+		subUrl = fmt.Sprintf("%s/%s", subUrl, url.path)
+	}
+
+	return fmt.Sprintf("?%s%s", subUrl, url.queryParam)
+}
+
 type ChatClient struct {
 	conn   network.Connection
 	dialer Dialer
@@ -42,6 +77,9 @@ type ChatClient struct {
 	errors chan error
 
 	send chan domain.ChatMessage
+
+	name string
+	url  Url
 }
 
 func NewChatClient(
@@ -50,6 +88,7 @@ func NewChatClient(
 	send chan domain.ChatMessage,
 	errors chan error,
 	logger logging.Logger,
+	url Url,
 ) *ChatClient {
 	return &ChatClient{
 		dialer: dialer,
@@ -57,15 +96,16 @@ func NewChatClient(
 		recv:   recv,
 		errors: errors,
 		send:   send,
+		url:    url,
 	}
 }
 
-func (c *ChatClient) Connect(url string) error {
-	conn, err := c.dialer.Dial(url)
+func (c *ChatClient) Connect() error {
+	conn, err := c.dialer.Dial(c.url.String())
 	if err != nil {
 		return err
 	}
-	c.logger.Info(fmt.Sprintf("Successfully connected to %s", url), map[string]any{})
+	c.logger.Info(fmt.Sprintf("Successfully connected to %s", c.url.String()), map[string]any{})
 
 	c.conn = conn
 	return nil
@@ -75,10 +115,10 @@ func (c *ChatClient) Disconnect() error {
 	return c.conn.Close()
 }
 
-func (c *ChatClient) SendMessage(message string, name string) {
+func (c *ChatClient) SendMessage(message string) {
 	select {
 	case c.send <- domain.ChatMessage{
-		From:      name,
+		From:      c.name,
 		Timestamp: time.Now(),
 		Text:      message,
 	}:
@@ -94,4 +134,8 @@ func (c *ChatClient) InboundMessages() <-chan application.Message {
 
 func (c *ChatClient) Errors() <-chan error {
 	return c.errors
+}
+
+func (c *ChatClient) SetName(name string) {
+	c.name = name
 }

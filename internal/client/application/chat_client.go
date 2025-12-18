@@ -12,4 +12,5 @@ type ChatClient interface {
 	SendMessage(message string)
 	InboundMessages() <-chan Message
 	Errors() <-chan error
+	SetName(name string)
 }
