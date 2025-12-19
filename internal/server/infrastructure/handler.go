@@ -69,7 +69,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(h.appCtx)
 
 	go client.WriteMessages(ctx)
-	go h.forwardMessages(ctx, clientId, recv)
+	go h.forwardMessages(ctx, clientName, recv)
 	h.logger.Info(fmt.Sprintf("client %s started", clientId), map[string]any{})
 
 	// TODO: blocks this goroutine, need to unblock it later
