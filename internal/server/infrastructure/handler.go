@@ -88,7 +88,7 @@ func (h *Handler) forwardMessages(ctx context.Context, clientId string, recv cha
 				return
 			}
 			if userMsg, ok := msg.(*domain.UserMessage); ok {
-				h.chatService.SendMessage(clientId, userMsg.Message)
+				h.chatService.SendMessage(clientId, userMsg.Text)
 			}
 		case <-ctx.Done():
 			return

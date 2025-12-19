@@ -29,8 +29,8 @@ func (m ChatMessage) MessageType() MessageType {
 }
 
 type UserJoinedMessage struct {
-	Timestamp time.Time
-	Name      string
+	Timestamp time.Time `json:"timestamp"`
+	Name      string    `json:"name"`
 }
 
 func (m UserJoinedMessage) MessageType() MessageType {
@@ -38,8 +38,8 @@ func (m UserJoinedMessage) MessageType() MessageType {
 }
 
 type UserLeftMessage struct {
-	Timestamp time.Time
-	Name      string
+	Timestamp time.Time `json:"timestamp"`
+	Name      string    `json:"name"`
 }
 
 func (m UserLeftMessage) MessageType() MessageType {

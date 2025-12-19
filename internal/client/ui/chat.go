@@ -8,8 +8,17 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/iomallach/gchad/internal/client/application"
 	"github.com/iomallach/gchad/internal/client/domain"
+)
+
+// Catppuccin Mocha colors
+var (
+	timestampStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#b4befe"))              // Lavender
+	nameStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#89b4fa")).Bold(true)   // Blue
+	textStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#cdd6f4"))              // Text
+	systemStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9e2af")).Italic(true) // Yellow
 )
 
 type ChatScreenKeymap struct {
@@ -154,13 +163,20 @@ func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
 func (c *Chat) updateMessages(msg application.Message) {
 	switch msg := msg.(type) {
 	case domain.ChatMessage:
-		c.messages = append(c.messages, fmt.Sprintf("%s %s: %s", msg.Timestamp, msg.From, msg.Text))
+		time := timestampStyle.Render(msg.Timestamp.Format("15:04:05"))
+		name := nameStyle.Render(msg.From + ":")
+		text := textStyle.Render(msg.Text)
+		c.messages = append(c.messages, fmt.Sprintf("%s %s %s", time, name, text))
 
 	case domain.UserJoinedMessage:
-		c.messages = append(c.messages, fmt.Sprintf("%s %s joined!", msg.Timestamp, msg.Name))
+		time := timestampStyle.Render(msg.Timestamp.Format("15:04:05"))
+		text := systemStyle.Render(msg.Name + " joined!")
+		c.messages = append(c.messages, fmt.Sprintf("%s %s", time, text))
 
 	case domain.UserLeftMessage:
-		c.messages = append(c.messages, fmt.Sprintf("%s %s left!", msg.Timestamp, msg.Name))
+		time := timestampStyle.Render(msg.Timestamp.Format("15:04:05"))
+		text := systemStyle.Render(msg.Name + " left!")
+		c.messages = append(c.messages, fmt.Sprintf("%s %s", time, text))
 	}
 }
 

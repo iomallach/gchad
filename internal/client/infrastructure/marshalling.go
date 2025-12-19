@@ -17,22 +17,22 @@ func UnmarshallMessage(message []byte) (application.Message, error) {
 
 	switch envelope.Type {
 	case domain.TypeChatMessage:
-		var msg *domain.ChatMessage
-		if err := json.Unmarshal(envelope.Payload, msg); err != nil {
+		msg := domain.ChatMessage{}
+		if err := json.Unmarshal(envelope.Payload, &msg); err != nil {
 			return nil, err
 		}
 		return msg, nil
 
 	case domain.TypeUserJoinedMessage:
-		var msg *domain.UserJoinedMessage
-		if err := json.Unmarshal(envelope.Payload, msg); err != nil {
+		msg := domain.UserJoinedMessage{}
+		if err := json.Unmarshal(envelope.Payload, &msg); err != nil {
 			return nil, err
 		}
 		return msg, nil
 
 	case domain.TypeUserLeftMessage:
-		var msg *domain.UserLeftMessage
-		if err := json.Unmarshal(envelope.Payload, msg); err != nil {
+		msg := domain.UserLeftMessage{}
+		if err := json.Unmarshal(envelope.Payload, &msg); err != nil {
 			return nil, err
 		}
 		return msg, nil

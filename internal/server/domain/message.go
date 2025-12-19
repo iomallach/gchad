@@ -11,8 +11,7 @@ type MessageType string
 const (
 	SystemUserJoined MessageType = "user_joined"
 	SystemUserLeft   MessageType = "user_left"
-	UserMsg          MessageType = "user_message"
-	NewConnection    MessageType = "connect_me"
+	UserMsg          MessageType = "chat"
 )
 
 type Messager interface {
@@ -53,14 +52,14 @@ func (m *UserLeftSystemMessage) MessageType() MessageType {
 
 type UserMessage struct {
 	Timestamp time.Time `json:"timestamp"`
-	Message   string    `json:"message"`
+	Text      string    `json:"text"`
 	From      string    `json:"from"`
 }
 
 func NewUserMessage(msg string, timestamp time.Time, from string) *UserMessage {
 	return &UserMessage{
 		Timestamp: timestamp,
-		Message:   msg,
+		Text:      msg,
 		From:      from,
 	}
 }
@@ -70,8 +69,8 @@ func (m *UserMessage) MessageType() MessageType {
 }
 
 type Message struct {
-	MessageType MessageType     `json:"type"`
-	Data        json.RawMessage `json:"data"`
+	Type    MessageType     `json:"type"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 func UnmarshalMessage(data []byte) (Messager, error) {
@@ -82,7 +81,7 @@ func UnmarshalMessage(data []byte) (Messager, error) {
 	}
 
 	var msg Messager
-	switch envelope.MessageType {
+	switch envelope.Type {
 	case SystemUserJoined:
 		msg = &UserJoinedSystemMessage{}
 	case SystemUserLeft:
@@ -90,10 +89,10 @@ func UnmarshalMessage(data []byte) (Messager, error) {
 	case UserMsg:
 		msg = &UserMessage{}
 	default:
-		return nil, fmt.Errorf("unknown message type: %s", envelope.MessageType)
+		return nil, fmt.Errorf("unknown message %s of type: %s", envelope.Payload, envelope.Type)
 	}
 
-	if err := json.Unmarshal(envelope.Data, &msg); err != nil {
+	if err := json.Unmarshal(envelope.Payload, &msg); err != nil {
 		return nil, err
 	}
 
@@ -107,8 +106,8 @@ func MarshallMessage(data Messager) ([]byte, error) {
 	}
 
 	envelope := Message{
-		MessageType: data.MessageType(),
-		Data:        json_data,
+		Type:    data.MessageType(),
+		Payload: json_data,
 	}
 
 	return json.Marshal(envelope)

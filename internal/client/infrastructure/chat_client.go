@@ -157,7 +157,7 @@ func (c *ChatClient) ReadPump() {
 
 		message, err := UnmarshallMessage(msg)
 		if err != nil {
-			c.logger.Error(fmt.Sprintf("failed to unmarshall the message: %s, %s", message, err.Error()), map[string]any{})
+			c.logger.Error(fmt.Sprintf("failed to unmarshall the message: %s, %s", msg, err.Error()), map[string]any{})
 		}
 
 		select {
@@ -180,7 +180,18 @@ func (c *ChatClient) WritePump() {
 				c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", data, err.Error()), map[string]any{})
 				continue
 			}
-			if err := c.conn.WriteTextMessage(data); err != nil {
+
+			envelope := domain.Envelope{
+				Type:    domain.TypeChatMessage,
+				Payload: data,
+			}
+			message, err := json.Marshal(envelope)
+			if err != nil {
+				c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", message, err.Error()), map[string]any{})
+				continue
+			}
+
+			if err := c.conn.WriteTextMessage(message); err != nil {
 				return
 			}
 		case <-time.After(time.Millisecond * 50): // should actually be ticker
