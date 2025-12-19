@@ -111,6 +111,7 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				l.textAboveInput = fmt.Sprintf("invalid username: %s", err.Error())
 			} else {
+				l.chatClient.SetName(value)
 				l.textAboveInput = fmt.Sprintf("going to connect as %s", value)
 				l.input.Reset()
 

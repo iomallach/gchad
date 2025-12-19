@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/iomallach/gchad/internal/server/domain"
+	"github.com/iomallach/gchad/pkg/logging"
 )
 
 type ChatServicer interface {
@@ -18,10 +19,10 @@ type ChatService struct {
 	messages chan *domain.UserMessage
 	notifier Notifier
 	clock    ClockGen
-	logger   Logger
+	logger   logging.Logger
 }
 
-func NewChatService(room *ChatRoom, notifier Notifier, clock ClockGen, eventsChanSize int, messagesChanSize int, logger Logger) *ChatService {
+func NewChatService(room *ChatRoom, notifier Notifier, clock ClockGen, eventsChanSize int, messagesChanSize int, logger logging.Logger) *ChatService {
 	return &ChatService{
 		room:     room,
 		events:   make(chan domain.ApplicationEvent, eventsChanSize),

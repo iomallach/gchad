@@ -65,7 +65,7 @@ func (url *Url) String() string {
 		subUrl = fmt.Sprintf("%s/%s", subUrl, url.path)
 	}
 
-	return fmt.Sprintf("?%s%s", subUrl, url.queryParam)
+	return fmt.Sprintf("%s?%s", subUrl, url.queryParam.String())
 }
 
 type ChatClient struct {
@@ -138,4 +138,5 @@ func (c *ChatClient) Errors() <-chan error {
 
 func (c *ChatClient) SetName(name string) {
 	c.name = name
+	c.url.queryParam.value = name
 }
