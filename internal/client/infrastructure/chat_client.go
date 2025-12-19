@@ -152,6 +152,10 @@ func (c *ChatClient) SetName(name string) {
 	c.url.queryParam.value = name
 }
 
+func (c *ChatClient) Host() string {
+	return c.url.String()
+}
+
 func (c *ChatClient) ReadPump() {
 	defer c.conn.Close()
 

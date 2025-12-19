@@ -19,6 +19,11 @@ var (
 	nameStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#89b4fa")).Bold(true)   // Blue
 	textStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#cdd6f4"))              // Text
 	systemStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9e2af")).Italic(true) // Yellow
+	headerStyle    = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#f9e2af")). // Yellow
+			Bold(true).
+			Border(lipgloss.RoundedBorder()).
+			Align(lipgloss.Center)
 )
 
 type ChatScreenKeymap struct {
@@ -96,6 +101,7 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if key.Matches(msg, c.bindings.CtrlD) {
 			_ = c.chatClient.Disconnect() // swallow the error?
+			c.chatViewPort.SetContent("")
 			return c, func() tea.Msg {
 				return disconnected{}
 			}
@@ -148,12 +154,12 @@ func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
 		c.input = textinput.New()
 		c.input.Width = msg.Width - 2
 		c.input.Focus()
-		c.chatViewPort = viewport.New(msg.Width-2, msg.Height-2)
+		c.chatViewPort = viewport.New(msg.Width-2, msg.Height-7)
 
 		c.ready = true
 	} else {
 		c.chatViewPort.Width = msg.Width - 2
-		c.chatViewPort.Height = msg.Height - 2
+		c.chatViewPort.Height = msg.Height - 7
 		c.input.Width = msg.Width - 2
 	}
 
@@ -181,5 +187,6 @@ func (c *Chat) updateMessages(msg application.Message) {
 }
 
 func (c Chat) View() string {
-	return fmt.Sprintf("%s\n\n%s", c.chatViewPort.View(), c.input.View())
+	styledHeader := headerStyle.Width(c.chatViewPort.Width).Render(c.chatClient.Host())
+	return fmt.Sprintf("\n%s\n%s\n\n%s", styledHeader, c.chatViewPort.View(), c.input.View())
 }
