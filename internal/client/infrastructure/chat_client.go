@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -108,6 +109,9 @@ func (c *ChatClient) Connect() error {
 	c.logger.Info(fmt.Sprintf("Successfully connected to %s", c.url.String()), map[string]any{})
 
 	c.conn = conn
+	go c.ReadPump()
+	go c.WritePump()
+
 	return nil
 }
 
@@ -139,4 +143,48 @@ func (c *ChatClient) Errors() <-chan error {
 func (c *ChatClient) SetName(name string) {
 	c.name = name
 	c.url.queryParam.value = name
+}
+
+func (c *ChatClient) ReadPump() {
+	defer c.conn.Close()
+
+	for {
+		_, msg, err := c.conn.ReadMessage() // the first value is the ws internal code
+		if err != nil {
+			return
+		}
+		// TODO: handle internal message type details (ping, pong, etc)
+
+		message, err := UnmarshallMessage(msg)
+		if err != nil {
+			c.logger.Error(fmt.Sprintf("failed to unmarshall the message: %s, %s", message, err.Error()), map[string]any{})
+		}
+
+		select {
+		case c.recv <- message:
+			c.logger.Debug("new message sent to ui", map[string]any{})
+		case <-time.After(time.Millisecond * 50):
+			c.logger.Error("message channel is full, skipping sending message to ui", map[string]any{})
+		}
+	}
+}
+
+func (c *ChatClient) WritePump() {
+	defer c.conn.Close()
+
+	for {
+		select {
+		case msg := <-c.send:
+			data, err := json.Marshal(msg)
+			if err != nil {
+				c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", data, err.Error()), map[string]any{})
+				continue
+			}
+			if err := c.conn.WriteTextMessage(data); err != nil {
+				return
+			}
+		case <-time.After(time.Millisecond * 50): // should actually be ticker
+			// TODO: write ping?
+		}
+	}
 }
