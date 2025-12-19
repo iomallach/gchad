@@ -15,11 +15,19 @@ import (
 )
 
 func main() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	// Redirect logs to a file to avoid breaking the TUI
+	logFile, err := os.OpenFile("client.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open log file: %v\n", err)
+		os.Exit(1)
+	}
+	defer logFile.Close()
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: logFile})
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	logger := infrastructure.NewZeroLogLogger(log.Logger)
-	dialer := infrastructure.NewWebsocketDialer(websocket.DefaultDialer, nil)
+	dialer := infrastructure.NewWebsocketDialer(websocket.DefaultDialer, logger)
 	url := infrastructure.NewUrl(
 		"ws",
 		"localhost",

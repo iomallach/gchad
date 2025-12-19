@@ -98,8 +98,10 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return c, tea.Quit
 
 			case key.Matches(msg, c.bindings.Enter):
-				go c.chatClient.SendMessage(c.input.Value())
-				c.input.Reset()
+				if c.input.Value() != "" {
+					go c.chatClient.SendMessage(c.input.Value())
+					c.input.Reset()
+				}
 				return c, nil
 
 			case key.Matches(msg, c.bindings.Esc):
