@@ -35,6 +35,14 @@ func (ws *WebsocketsConnection) SetWriteDeadline(t time.Time) error {
 	return ws.conn.SetWriteDeadline(t)
 }
 
+func (ws *WebsocketsConnection) SetReadDeadline(t time.Time) error {
+	return ws.conn.SetReadDeadline(t)
+}
+
+func (ws *WebsocketsConnection) SetPongHandler(f func(string) error) {
+	ws.conn.SetPongHandler(f)
+}
+
 func (ws *WebsocketsConnection) writeMessage(msgCode int, data []byte) error {
 	err := ws.conn.WriteMessage(msgCode, data)
 	return TranslateWriteError(err)
