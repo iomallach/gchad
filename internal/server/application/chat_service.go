@@ -74,6 +74,7 @@ func (cs *ChatService) handleMessages(ctx context.Context) {
 		case msg := <-cs.messages:
 			cs.notifier.BroadcastToRoom(cs.room, msg)
 		case <-ctx.Done():
+			cs.logger.Info("message handler context done, exiting", make(map[string]any))
 			return
 		}
 	}
@@ -93,6 +94,7 @@ func (cs *ChatService) handleEvents(ctx context.Context) {
 				cs.notifier.BroadcastToRoom(cs.room, leftMessage)
 			}
 		case <-ctx.Done():
+			cs.logger.Info("event handler context done, exiting", make(map[string]any))
 			return
 		}
 	}
