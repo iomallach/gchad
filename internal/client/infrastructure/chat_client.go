@@ -116,6 +116,13 @@ func (c *ChatClient) Connect() error {
 }
 
 func (c *ChatClient) Disconnect() error {
+	if err := c.conn.SetWriteDeadline(time.Now().Add(time.Second * 90)); err != nil {
+		return err
+	}
+	if err := c.conn.WriteCloseMessage([]byte{}); err != nil {
+		return err
+	}
+
 	return c.conn.Close()
 }
 
