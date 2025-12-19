@@ -149,11 +149,16 @@ func (c *ChatClient) ReadPump() {
 	defer c.conn.Close()
 
 	for {
-		_, msg, err := c.conn.ReadMessage() // the first value is the ws internal code
-		if err != nil {
+		if err := c.conn.SetReadDeadline(time.Now().Add(time.Second * 90)); err != nil {
+			c.logger.Error(fmt.Sprintf("failed to set read deadline: %s", err.Error()), map[string]any{})
 			return
 		}
-		// TODO: handle internal message type details (ping, pong, etc)
+
+		_, msg, err := c.conn.ReadMessage() // the first value is the ws internal code
+		if err != nil {
+			c.logger.Error(fmt.Sprintf("failed to read a message: %s", err.Error()), map[string]any{})
+			return
+		}
 
 		message, err := UnmarshallMessage(msg)
 		if err != nil {
@@ -172,30 +177,34 @@ func (c *ChatClient) ReadPump() {
 func (c *ChatClient) WritePump() {
 	defer c.conn.Close()
 
-	for {
-		select {
-		case msg := <-c.send:
-			data, err := json.Marshal(msg)
-			if err != nil {
-				c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", data, err.Error()), map[string]any{})
-				continue
-			}
+	for msg := range c.send {
+		data, err := json.Marshal(msg)
+		if err != nil {
+			c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", data, err.Error()), map[string]any{})
+			continue
+		}
 
-			envelope := domain.Envelope{
-				Type:    domain.TypeChatMessage,
-				Payload: data,
-			}
-			message, err := json.Marshal(envelope)
-			if err != nil {
-				c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", message, err.Error()), map[string]any{})
-				continue
-			}
+		envelope := domain.Envelope{
+			Type:    domain.TypeChatMessage,
+			Payload: data,
+		}
+		message, err := json.Marshal(envelope)
+		if err != nil {
+			c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", message, err.Error()), map[string]any{})
+			continue
+		}
 
-			if err := c.conn.WriteTextMessage(message); err != nil {
-				return
-			}
-		case <-time.After(time.Millisecond * 50): // should actually be ticker
-			// TODO: write ping?
+		if err := c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+			c.logger.Error(fmt.Sprintf("failed to set write deadline: %s", err.Error()), map[string]any{})
+			return
+		}
+		if err := c.conn.WriteTextMessage(message); err != nil {
+			c.logger.Error(fmt.Sprintf("failed to write message: %s", err.Error()), map[string]any{})
+			return
+		}
+		if err := c.conn.SetWriteDeadline(time.Time{}); err != nil {
+			c.logger.Error(fmt.Sprintf("failed to clear write deadline: %s", err.Error()), map[string]any{})
+			return
 		}
 	}
 }
