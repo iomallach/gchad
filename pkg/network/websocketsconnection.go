@@ -43,6 +43,10 @@ func (ws *WebsocketsConnection) SetPongHandler(f func(string) error) {
 	ws.conn.SetPongHandler(f)
 }
 
+func (ws *WebsocketsConnection) SetPingHandler(f func(string) error) {
+	ws.conn.SetPingHandler(f)
+}
+
 func (ws *WebsocketsConnection) writeMessage(msgCode int, data []byte) error {
 	err := ws.conn.WriteMessage(msgCode, data)
 	return TranslateWriteError(err)
@@ -58,4 +62,8 @@ func (ws *WebsocketsConnection) WriteTextMessage(data []byte) error {
 
 func (ws *WebsocketsConnection) WritePingMessage(data []byte) error {
 	return ws.writeMessage(websocket.PingMessage, data)
+}
+
+func (ws *WebsocketsConnection) WritePongMessage(data []byte) error {
+	return ws.writeMessage(websocket.PongMessage, data)
 }

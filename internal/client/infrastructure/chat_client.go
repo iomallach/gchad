@@ -153,6 +153,16 @@ func (c *ChatClient) ReadPump() {
 			c.logger.Error(fmt.Sprintf("failed to set read deadline: %s", err.Error()), map[string]any{})
 			return
 		}
+		c.conn.SetPingHandler(func(string) error {
+			err := c.conn.SetReadDeadline(time.Now().Add(time.Second * 90))
+			if err != nil {
+				return err
+			}
+			if err := c.conn.SetWriteDeadline(time.Now().Add(time.Second * 90)); err != nil {
+				return err
+			}
+			return c.conn.WritePongMessage([]byte{})
+		})
 
 		_, msg, err := c.conn.ReadMessage() // the first value is the ws internal code
 		if err != nil {
