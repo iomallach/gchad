@@ -67,6 +67,14 @@ func (c *Client) ReadMessages(ctx context.Context) {
 	defer close(c.recv)
 	defer c.conn.Close()
 
+	if err := c.conn.SetReadDeadline(time.Now().Add(c.configuration.PongWait)); err != nil {
+		c.logger.Error(fmt.Sprintf("failed to set read deadline: %s", err.Error()), map[string]any{"client_id": c.Id()})
+		return
+	}
+	c.conn.SetPongHandler(func(string) error {
+		return c.conn.SetReadDeadline(time.Now().Add(c.configuration.PongWait))
+	})
+
 	for {
 		if ctx.Err() != nil {
 			c.logger.Debug("cancelling read pump", map[string]any{"client_id": c.Id()})
@@ -131,15 +139,33 @@ func (c *Client) WriteMessages(ctx context.Context) {
 				c.logger.Error("failed to marshall a message", map[string]any{"client_id": c.Id()})
 			}
 
-			err = c.conn.WriteTextMessage(message)
-			if err != nil {
-				c.logger.Error(fmt.Sprintf("failed to write message: %s", err.Error()), map[string]any{"client_id": c.Id()})
+			if err := c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				c.logger.Error(fmt.Sprintf("failed to set write deadline: %s", err.Error()), map[string]any{"client_id": c.Id()})
+				return
 			}
+			if err := c.conn.WriteTextMessage(message); err != nil {
+				c.logger.Error(fmt.Sprintf("failed to write message: %s", err.Error()), map[string]any{"client_id": c.Id()})
+				return
+			}
+			if err := c.conn.SetWriteDeadline(time.Time{}); err != nil {
+				c.logger.Error(fmt.Sprintf("failed to clear write deadline: %s", err.Error()), map[string]any{"client_id": c.Id()})
+				return
+			}
+
 		case <-ticker.C:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(c.configuration.WriteWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(c.configuration.WriteWait)); err != nil {
+				c.logger.Error(fmt.Sprintf("failed to set write deadline: %s", err.Error()), map[string]any{"client_id": c.Id()})
+				return
+			}
+
 			c.logger.Debug("writing ping message", map[string]any{"client_id": c.Id()})
 			if err := c.conn.WritePingMessage(nil); err != nil {
 				c.logger.Error(fmt.Sprintf("failed to write ping message: %s", err.Error()), map[string]any{"client_id": c.Id()})
+				return
+			}
+
+			if err := c.conn.SetWriteDeadline(time.Time{}); err != nil {
+				c.logger.Error(fmt.Sprintf("failed to clear write deadline: %s", err.Error()), map[string]any{"client_id": c.Id()})
 				return
 			}
 		}
