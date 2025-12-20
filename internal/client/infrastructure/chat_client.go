@@ -74,13 +74,15 @@ type ChatClient struct {
 	dialer Dialer
 	logger logging.Logger
 
+	// TODO: wrap in an own structure to declutter this definiton?
 	recv   chan application.Message
 	errors chan error
 
 	send chan domain.ChatMessage
 
-	name string
-	url  Url
+	name      string
+	url       Url
+	chatStats *domain.ChatStats
 }
 
 func NewChatClient(
@@ -92,12 +94,13 @@ func NewChatClient(
 	url Url,
 ) *ChatClient {
 	return &ChatClient{
-		dialer: dialer,
-		logger: logger,
-		recv:   recv,
-		errors: errors,
-		send:   send,
-		url:    url,
+		dialer:    dialer,
+		logger:    logger,
+		recv:      recv,
+		errors:    errors,
+		send:      send,
+		url:       url,
+		chatStats: domain.NewChatStats(),
 	}
 }
 
@@ -156,6 +159,8 @@ func (c *ChatClient) Host() string {
 	return c.url.String()
 }
 
+// TODO: at this point, perhaps, really consider abstracting the reads and error handling
+// away from this structure
 func (c *ChatClient) ReadPump() {
 	defer c.conn.Close()
 
@@ -184,6 +189,17 @@ func (c *ChatClient) ReadPump() {
 		message, err := UnmarshallMessage(msg)
 		if err != nil {
 			c.logger.Error(fmt.Sprintf("failed to unmarshall the message: %s, %s", msg, err.Error()), map[string]any{})
+		}
+
+		switch message.MessageType() {
+		case domain.TypeChatMessage:
+			c.chatStats.IncrementReceived()
+		case domain.TypeUserJoinedMessage:
+			c.chatStats.IncrementClients()
+			c.chatStats.IncrementReceived()
+		case domain.TypeUserLeftMessage:
+			c.chatStats.DecrementClients()
+			c.chatStats.IncrementReceived()
 		}
 
 		select {
@@ -227,5 +243,11 @@ func (c *ChatClient) WritePump() {
 			c.logger.Error(fmt.Sprintf("failed to clear write deadline: %s", err.Error()), map[string]any{})
 			return
 		}
+
+		c.chatStats.IncrementSent()
 	}
+}
+
+func (c *ChatClient) Stats() *domain.ChatStats {
+	return c.chatStats
 }

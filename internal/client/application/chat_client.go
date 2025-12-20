@@ -14,4 +14,5 @@ type ChatClient interface {
 	Errors() <-chan error
 	SetName(name string)
 	Host() string
+	Stats() *domain.ChatStats
 }

@@ -23,13 +23,14 @@ type failedToConnectToChat struct {
 	err error
 }
 
-func connectToChatCmd(chatClient application.ChatClient) tea.Cmd {
+func connectToChatCmd(chatClient application.ChatClient, name string) tea.Cmd {
 	return func() tea.Msg {
+		chatClient.SetName(name)
 		if err := chatClient.Connect(); err != nil {
 			return failedToConnectToChat{err}
 		}
 
-		return switchToChat{}
+		return switchToChat{name}
 	}
 }
 
@@ -105,17 +106,16 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return l, tea.Quit
 
 		case key.Matches(msg, l.bindings.Enter):
-			value := l.input.Value()
-			err := l.input.Validate(value)
+			name := l.input.Value()
+			err := l.input.Validate(name)
 
 			if err != nil {
 				l.textAboveInput = fmt.Sprintf("invalid username: %s", err.Error())
 			} else {
-				l.chatClient.SetName(value)
-				l.textAboveInput = fmt.Sprintf("going to connect as %s", value)
+				l.textAboveInput = fmt.Sprintf("going to connect as %s", name)
 				l.input.Reset()
 
-				return l, connectToChatCmd(l.chatClient)
+				return l, connectToChatCmd(l.chatClient, name)
 			}
 
 			return l, nil

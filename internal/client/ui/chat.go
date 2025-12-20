@@ -74,6 +74,7 @@ func pollForChatMessageCmd(chatClient application.ChatClient) tea.Cmd {
 type Chat struct {
 	input        textinput.Model
 	chatViewPort viewport.Model
+	statusLine   StatusLine
 	ready        bool
 	bindings     ChatScreenKeymap
 	inputFocused bool
@@ -140,9 +141,14 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		c.updateMessages(msg.msg)
 		c.chatViewPort.SetContent(strings.Join(c.messages, "\n"))
 
-		return c, pollForChatMessageCmd(c.chatClient)
+		stats := c.chatClient.Stats()
+		updatedStatusLine, cmd := c.statusLine.Update(stats)
+		c.statusLine = updatedStatusLine.(StatusLine)
+
+		return c, tea.Batch(cmd, pollForChatMessageCmd(c.chatClient))
 
 	case switchToChat:
+		c.statusLine.connectedAs = msg.name
 		return c, pollForChatMessageCmd(c.chatClient)
 	}
 
@@ -154,12 +160,12 @@ func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
 		c.input = textinput.New()
 		c.input.Width = msg.Width - 2
 		c.input.Focus()
-		c.chatViewPort = viewport.New(msg.Width-2, msg.Height-7)
+		c.chatViewPort = viewport.New(msg.Width-2, msg.Height-9)
 
 		c.ready = true
 	} else {
 		c.chatViewPort.Width = msg.Width - 2
-		c.chatViewPort.Height = msg.Height - 7
+		c.chatViewPort.Height = msg.Height - 9
 		c.input.Width = msg.Width - 2
 	}
 
@@ -188,5 +194,5 @@ func (c *Chat) updateMessages(msg application.Message) {
 
 func (c Chat) View() string {
 	styledHeader := headerStyle.Width(c.chatViewPort.Width).Render(c.chatClient.Host())
-	return fmt.Sprintf("\n%s\n%s\n\n%s", styledHeader, c.chatViewPort.View(), c.input.View())
+	return fmt.Sprintf("\n%s\n%s\n\n%s\n%s", styledHeader, c.chatViewPort.View(), c.input.View(), c.statusLine.View())
 }

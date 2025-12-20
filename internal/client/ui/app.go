@@ -5,7 +5,9 @@ import (
 	"github.com/iomallach/gchad/internal/client/application"
 )
 
-type switchToChat struct{}
+type switchToChat struct {
+	name string
+}
 
 type disconnected struct{}
 
