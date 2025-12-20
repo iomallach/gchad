@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/iomallach/gchad/internal/server/domain"
 	"github.com/iomallach/gchad/pkg/logging"
@@ -81,6 +82,12 @@ func (cs *ChatService) handleMessages(ctx context.Context) {
 }
 
 func (cs *ChatService) handleEvents(ctx context.Context) {
+	// TODO: two things to consider: whether it belongs here; configure it some place else
+	// this is not exactly an event, but we want to broadcast the stats on some basis to keep
+	// clients in sync
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case event := <-cs.events:
@@ -95,6 +102,11 @@ func (cs *ChatService) handleEvents(ctx context.Context) {
 				leftMessage := domain.NewUserLeftSystemMessage(e.Name, cs.clock())
 				cs.notifier.BroadcastToRoom(cs.room, leftMessage)
 			}
+
+		case <-ticker.C:
+			statsMsg := domain.NewStatsSystemMessage(len(cs.room.GetClients()))
+			cs.notifier.BroadcastToRoom(cs.room, statsMsg)
+
 		case <-ctx.Done():
 			cs.logger.Info("event handler context done, exiting", make(map[string]any))
 			return
