@@ -56,7 +56,6 @@ func main() {
 		ctx,
 	)
 
-	notifier.Start(ctx)
 	chatService.Start(ctx)
 
 	http.HandleFunc("/chat", handler.ServeHTTP)

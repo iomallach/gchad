@@ -1,7 +1,6 @@
 package infrastructure
 
 import (
-	"context"
 	"sync"
 
 	"github.com/iomallach/gchad/internal/server/application"
@@ -37,10 +36,6 @@ func NewClientNotifierFromExistingClients(logger logging.Logger, clients map[str
 	}
 }
 
-func (n *ClientNotifier) Start(ctx context.Context) {
-	go n.handleClientLifecycle(ctx)
-}
-
 func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.Messager) {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
@@ -60,45 +55,23 @@ func (n *ClientNotifier) BroadcastToRoom(room *application.ChatRoom, msg domain.
 }
 
 func (n *ClientNotifier) RegisterClient(client *Client) {
-	select {
-	case n.register <- client:
-		n.logger.Debug("scheduled client to be registered", map[string]any{"client_id": client.Id()})
-	default:
-		n.logger.Error("channel is full or closed", map[string]any{"client_id": client.Id()})
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	if _, ok := n.clients[client.Id()]; ok {
+		n.logger.Error("client already exists, skipping adding", map[string]any{"client_id": client.Id()})
+	} else {
+		n.clients[client.Id()] = client
 	}
 }
 
 func (n *ClientNotifier) UnregisterClient(id string) {
-	select {
-	case n.unregister <- id:
-		n.logger.Debug("scheduled client to be unregistered", map[string]any{"client_id": id})
-	default:
-		n.logger.Error("channel is full or closed", map[string]any{"client_id": id})
-	}
-}
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
-func (n *ClientNotifier) handleClientLifecycle(ctx context.Context) {
-	for {
-		select {
-		case client := <-n.register:
-			n.mu.Lock()
-			if _, ok := n.clients[client.Id()]; ok {
-				n.logger.Error("client already exists, skipping adding", map[string]any{"client_id": client.Id()})
-			} else {
-				n.clients[client.Id()] = client
-			}
-			n.mu.Unlock()
-		case clientId := <-n.unregister:
-			n.mu.Lock()
-			if _, ok := n.clients[clientId]; ok {
-				delete(n.clients, clientId)
-			} else {
-				n.logger.Error("client doesn't exist, skipping unregistering", map[string]any{"client_id": clientId})
-			}
-			n.mu.Unlock()
-		case <-ctx.Done():
-			n.logger.Debug("notifier context done, exiting", make(map[string]any, 0))
-			return
-		}
+	if _, ok := n.clients[id]; ok {
+		delete(n.clients, id)
+	} else {
+		n.logger.Error("client doesn't exist, skipping unregistering", map[string]any{"client_id": id})
 	}
 }
