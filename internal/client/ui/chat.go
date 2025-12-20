@@ -13,14 +13,13 @@ import (
 	"github.com/iomallach/gchad/internal/client/domain"
 )
 
-// Catppuccin Mocha colors
 var (
-	timestampStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#b4befe"))              // Lavender
-	nameStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#89b4fa")).Bold(true)   // Blue
-	textStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#cdd6f4"))              // Text
-	systemStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9e2af")).Italic(true) // Yellow
+	timestampStyle = lipgloss.NewStyle().Foreground(CatppuccinMocha.Lavender)
+	nameStyle      = lipgloss.NewStyle().Foreground(CatppuccinMocha.Blue).Bold(true)
+	textStyle      = lipgloss.NewStyle().Foreground(CatppuccinMocha.Text)
+	systemStyle    = lipgloss.NewStyle().Foreground(CatppuccinMocha.Yellow).Italic(true)
 	headerStyle    = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#f9e2af")). // Yellow
+			Foreground(CatppuccinMocha.Yellow).
 			Bold(true).
 			Border(lipgloss.RoundedBorder()).
 			Align(lipgloss.Center)

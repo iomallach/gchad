@@ -8,43 +8,37 @@ import (
 	"github.com/iomallach/gchad/internal/client/domain"
 )
 
-// Catppuccin Mocha colors for statusline
 var (
-	statusGreen   = lipgloss.Color("#a6e3a1") // Green
-	statusBase    = lipgloss.Color("#1e1e2e") // Base background
-	statusSurface = lipgloss.Color("#313244") // Surface0
-	statusText    = lipgloss.Color("#cdd6f4") // Text
-
 	statusLeftStyle = lipgloss.NewStyle().
-			Background(statusGreen).
-			Foreground(statusBase).
+			Background(CatppuccinMocha.Green).
+			Foreground(CatppuccinMocha.Base).
 			Bold(true).
 			Padding(0, 1)
 
 	statusMiddleStyle = lipgloss.NewStyle().
-				Foreground(statusText).
-				Background(statusGreen)
+				Foreground(CatppuccinMocha.Text).
+				Background(CatppuccinMocha.Crust)
 
 	statusRightStyle = lipgloss.NewStyle().
-				Background(statusGreen).
-				Foreground(statusBase).
+				Background(CatppuccinMocha.Green).
+				Foreground(CatppuccinMocha.Base).
 				Bold(true).
 				Padding(0, 1)
 
 	statusRootStyle = lipgloss.NewStyle().
-			Background(statusSurface)
+			Background(CatppuccinMocha.Surface0)
 
 	leftSectionRightSeparatorStyle = lipgloss.NewStyle().
-					Foreground(statusGreen).
-					Background(statusSurface)
+					Foreground(CatppuccinMocha.Green).
+					Background(CatppuccinMocha.Surface0)
 
 	middleSectionSeparatorStyle = lipgloss.NewStyle().
-					Foreground(statusGreen).
-					Background(statusSurface)
+					Foreground(CatppuccinMocha.Crust).
+					Background(CatppuccinMocha.Surface0)
 
-	rightSeparatorStyle = lipgloss.NewStyle().
-				Foreground(statusGreen).
-				Background(statusSurface)
+	rightSectionLeftSeparatorStyle = lipgloss.NewStyle().
+					Foreground(CatppuccinMocha.Green).
+					Background(CatppuccinMocha.Surface0)
 )
 
 type StatusLine struct {
@@ -77,35 +71,31 @@ func (s StatusLine) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s StatusLine) View() string {
-	// Left section: Connected as info
-	leftSection := statusLeftStyle.Render(fmt.Sprintf("As %s", s.connectedAs))
+	leftSection := statusLeftStyle.Render(fmt.Sprintf(" %s", s.connectedAs))
 	leftSectionRightSeparator := leftSectionRightSeparatorStyle.Render("") // U+E0B0: right-pointing triangle
 
-	// Middle section: Stats
 	middleSection := statusMiddleStyle.Render(fmt.Sprintf(" In: %d Out: %d ", s.messagesReceived, s.messagesSent))
 	middleSectionLeftSeparator := middleSectionSeparatorStyle.Render("")
 	middleSectionRightSeparator := middleSectionSeparatorStyle.Render("")
 
-	// Right section: gchad
-	rightSeparator := rightSeparatorStyle.Render("") // U+E0B2: left-pointing triangle
-	rightSection := statusRightStyle.Render("gchad")
+	rightSectionLeftSeparator := rightSectionLeftSeparatorStyle.Render("") // U+E0B2: left-pointing triangle
+	rightSection := statusRightStyle.Render(" gchad")
 
-	// Calculate content widths (using lipgloss.Width to account for ANSI codes)
 	leftWidth := lipgloss.Width(leftSection) + lipgloss.Width(leftSectionRightSeparator)
 	middleWidth := lipgloss.Width(middleSection) + lipgloss.Width(middleSectionLeftSeparator) + lipgloss.Width(middleSectionRightSeparator)
-	rightWidth := lipgloss.Width(rightSeparator) + lipgloss.Width(rightSection)
+	rightWidth := lipgloss.Width(rightSectionLeftSeparator) + lipgloss.Width(rightSection)
 
-	// Calculate spacing needed
+	// spacing required
 	if s.width > 0 {
 		totalContentWidth := leftWidth + middleWidth + rightWidth
 		remainingSpace := s.width - totalContentWidth
 
 		if remainingSpace > 0 {
-			// Split remaining space: half before middle, half after middle
+			// split remaining space: half before middle, half after middle
 			leftPadding := remainingSpace / 2
 			rightPadding := remainingSpace - leftPadding
 
-			// Create padding with root background
+			// create padding with root background
 			leftGap := statusRootStyle.Render(lipgloss.NewStyle().Width(leftPadding).Render(""))
 			rightGap := statusRootStyle.Render(lipgloss.NewStyle().Width(rightPadding).Render(""))
 
@@ -117,19 +107,19 @@ func (s StatusLine) View() string {
 					middleSection +
 					middleSectionRightSeparator +
 					rightGap +
-					rightSeparator +
+					rightSectionLeftSeparator +
 					rightSection,
 			)
 		}
 	}
 
-	// Fallback if width not set or content too wide
+	// fallback if width not set or content too wide
 	return statusRootStyle.Render(
 		leftSection +
 			leftSectionRightSeparator + " " +
 			middleSectionLeftSeparator +
 			middleSection + " " +
-			rightSeparator +
+			rightSectionLeftSeparator +
 			rightSection,
 	)
 }
