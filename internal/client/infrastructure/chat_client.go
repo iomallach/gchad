@@ -199,6 +199,13 @@ func (c *ChatClient) ReadPump() {
 		case domain.TypeUserLeftMessage:
 			c.chatStats.DecrementClients()
 			c.chatStats.IncrementReceived()
+		case domain.TypeStatsMessage:
+			msg := message.(domain.StatsMessage)
+			c.chatStats.ResetClients(msg.ClientsOnline)
+
+			// Don't expose the stats message to ui, read the next message
+			// The ui would know the client count through the reference to stats
+			continue
 		}
 
 		select {

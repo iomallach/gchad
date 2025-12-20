@@ -15,6 +15,7 @@ const (
 	TypeChatMessage       MessageType = "chat"
 	TypeUserJoinedMessage MessageType = "user_joined"
 	TypeUserLeftMessage   MessageType = "user_left"
+	TypeStatsMessage      MessageType = "stats"
 )
 
 type Envelope struct {
@@ -48,4 +49,12 @@ type UserLeftMessage struct {
 
 func (m UserLeftMessage) MessageType() MessageType {
 	return TypeUserLeftMessage
+}
+
+type StatsMessage struct {
+	ClientsOnline int `json:"clients_online"`
+}
+
+func (m StatsMessage) MessageType() MessageType {
+	return TypeStatsMessage
 }

@@ -36,6 +36,13 @@ func UnmarshallMessage(message []byte) (domain.Message, error) {
 		}
 		return msg, nil
 
+	case domain.TypeStatsMessage:
+		msg := domain.StatsMessage{}
+		if err := json.Unmarshal(envelope.Payload, &msg); err != nil {
+			return nil, err
+		}
+		return msg, nil
+
 	default:
 		// should be unreachable due to unmarshalling into envelope
 		return nil, fmt.Errorf("unexpected message type: %v", envelope.Type)

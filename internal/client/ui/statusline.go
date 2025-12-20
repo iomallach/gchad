@@ -74,7 +74,7 @@ func (s StatusLine) View() string {
 	leftSection := statusLeftStyle.Render(fmt.Sprintf(" %s", s.connectedAs))
 	leftSectionRightSeparator := leftSectionRightSeparatorStyle.Render("") // U+E0B0: right-pointing triangle
 
-	middleSection := statusMiddleStyle.Render(fmt.Sprintf(" In: %d Out: %d ", s.messagesReceived, s.messagesSent))
+	middleSection := statusMiddleStyle.Render(fmt.Sprintf(" In: %d Out: %d Online: %d ", s.messagesReceived, s.messagesSent, s.clientsInTheRoom))
 	middleSectionLeftSeparator := middleSectionSeparatorStyle.Render("")
 	middleSectionRightSeparator := middleSectionSeparatorStyle.Render("")
 
