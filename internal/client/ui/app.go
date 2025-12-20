@@ -2,8 +2,19 @@ package ui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/iomallach/gchad/internal/client/application"
+	"github.com/iomallach/gchad/internal/client/domain"
 )
+
+type ChatClient interface {
+	Connect() error
+	Disconnect() error
+	SendMessage(message string)
+	InboundMessages() <-chan domain.Message
+	Errors() <-chan error
+	SetName(name string)
+	Host() string
+	Stats() *domain.ChatStats
+}
 
 type switchToChat struct {
 	name string
@@ -30,7 +41,7 @@ type App struct {
 	activeSession activeSession
 }
 
-func InitialAppModel(loginScreen Login, chatScreen Chat, chatClient application.ChatClient) App {
+func InitialAppModel(loginScreen Login, chatScreen Chat, chatClient ChatClient) App {
 	return App{
 		loginScreen:   loginScreen,
 		chatScreen:    chatScreen,

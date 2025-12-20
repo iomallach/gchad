@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/iomallach/gchad/internal/client/application"
 	"github.com/iomallach/gchad/internal/client/domain"
 	"github.com/iomallach/gchad/pkg/logging"
 	"github.com/iomallach/gchad/pkg/network"
@@ -75,7 +74,7 @@ type ChatClient struct {
 	logger logging.Logger
 
 	// TODO: wrap in an own structure to declutter this definiton?
-	recv   chan application.Message
+	recv   chan domain.Message
 	errors chan error
 
 	send chan domain.ChatMessage
@@ -87,7 +86,7 @@ type ChatClient struct {
 
 func NewChatClient(
 	dialer Dialer,
-	recv chan application.Message,
+	recv chan domain.Message,
 	send chan domain.ChatMessage,
 	errors chan error,
 	logger logging.Logger,
@@ -142,7 +141,7 @@ func (c *ChatClient) SendMessage(message string) {
 	}
 }
 
-func (c *ChatClient) InboundMessages() <-chan application.Message {
+func (c *ChatClient) InboundMessages() <-chan domain.Message {
 	return c.recv
 }
 

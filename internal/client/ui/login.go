@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/iomallach/gchad/internal/client/application"
 )
 
 var rootStyle = lipgloss.NewStyle().
@@ -23,7 +22,7 @@ type failedToConnectToChat struct {
 	err error
 }
 
-func connectToChatCmd(chatClient application.ChatClient, name string) tea.Cmd {
+func connectToChatCmd(chatClient ChatClient, name string) tea.Cmd {
 	return func() tea.Msg {
 		chatClient.SetName(name)
 		if err := chatClient.Connect(); err != nil {
@@ -57,7 +56,7 @@ var DefaultLoginScreenKeymap = LoginScreenKeymap{
 }
 
 type Login struct {
-	chatClient     application.ChatClient
+	chatClient     ChatClient
 	textAboveInput string
 	input          textinput.Model
 	bindings       LoginScreenKeymap
@@ -65,7 +64,7 @@ type Login struct {
 	height         int
 }
 
-func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap, chatClient application.ChatClient) Login {
+func InitialLoginModel(textAboveInput string, bindings LoginScreenKeymap, chatClient ChatClient) Login {
 	input := textinput.New()
 	input.CharLimit = 20
 	input.Width = 40

@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/iomallach/gchad/internal/client/application"
 	"github.com/iomallach/gchad/internal/client/domain"
 )
 
-func UnmarshallMessage(message []byte) (application.Message, error) {
+func UnmarshallMessage(message []byte) (domain.Message, error) {
 	var envelope domain.Envelope
 
 	if err := json.Unmarshal(message, &envelope); err != nil {

@@ -6,7 +6,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gorilla/websocket"
-	"github.com/iomallach/gchad/internal/client/application"
 	"github.com/iomallach/gchad/internal/client/domain"
 	"github.com/iomallach/gchad/internal/client/infrastructure"
 	"github.com/iomallach/gchad/internal/client/ui"
@@ -37,7 +36,7 @@ func main() {
 	)
 	chatClient := infrastructure.NewChatClient(
 		dialer,
-		make(chan application.Message, 256),
+		make(chan domain.Message, 256),
 		make(chan domain.ChatMessage, 256),
 		make(chan error, 256),
 		logger,

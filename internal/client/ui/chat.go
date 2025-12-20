@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/iomallach/gchad/internal/client/application"
 	"github.com/iomallach/gchad/internal/client/domain"
 )
 
@@ -52,14 +51,14 @@ var DefaultChatScreenKeymap = ChatScreenKeymap{
 }
 
 type newMessageReceived struct {
-	msg application.Message
+	msg domain.Message
 }
 
 type newErrorReceived struct {
 	err error
 }
 
-func pollForChatMessageCmd(chatClient application.ChatClient) tea.Cmd {
+func pollForChatMessageCmd(chatClient ChatClient) tea.Cmd {
 	return func() tea.Msg {
 		select {
 		case msg := <-chatClient.InboundMessages():
@@ -77,12 +76,12 @@ type Chat struct {
 	ready        bool
 	bindings     ChatScreenKeymap
 	inputFocused bool
-	chatClient   application.ChatClient
+	chatClient   ChatClient
 	// TODO: this has to be a struct or something that manages the chat properly?
 	messages []string
 }
 
-func InitialChatModel(bindings ChatScreenKeymap, chatClient application.ChatClient) Chat {
+func InitialChatModel(bindings ChatScreenKeymap, chatClient ChatClient) Chat {
 	return Chat{bindings: bindings, inputFocused: true, chatClient: chatClient, messages: make([]string, 0)}
 }
 
@@ -174,7 +173,7 @@ func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
 	return c, cmd
 }
 
-func (c *Chat) updateMessages(msg application.Message) {
+func (c *Chat) updateMessages(msg domain.Message) {
 	switch msg := msg.(type) {
 	case domain.ChatMessage:
 		time := timestampStyle.Render(msg.Timestamp.Format("15:04:05"))

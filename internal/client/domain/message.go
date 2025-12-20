@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+type Message interface {
+	MessageType() MessageType
+}
+
 type MessageType string
 
 const (
