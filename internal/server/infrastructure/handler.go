@@ -61,7 +61,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	recv := make(chan domain.Messager, h.clientConfig.RecvChannelSize)
 	send := make(chan domain.Messager, h.clientConfig.SendChannelSize)
 	client := NewClient(clientId, clientName, wsConn, recv, send, h.clientConfig, h.logger)
-	h.logger.Info(fmt.Sprintf("client %s connected", clientId), map[string]any{})
+	h.logger.Info(fmt.Sprintf("client %s connected", clientName), map[string]any{})
 
 	h.notifier.RegisterClient(client)
 	h.chatService.EnterRoom(clientId, clientName)
@@ -70,7 +70,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go client.WriteMessages(ctx)
 	go h.forwardMessages(ctx, clientName, recv)
-	h.logger.Info(fmt.Sprintf("client %s started", clientId), map[string]any{})
+	h.logger.Info(fmt.Sprintf("client %s started", clientName), map[string]any{})
 
 	// TODO: blocks this goroutine, need to unblock it later
 	client.ReadMessages(ctx)

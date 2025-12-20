@@ -88,6 +88,8 @@ func (cs *ChatService) handleEvents(ctx context.Context) {
 			case *domain.UserJoinedRoom:
 				joinedMsg := domain.NewUserJoinedSystemMessage(e.Name, cs.clock())
 				cs.notifier.BroadcastToRoom(cs.room, joinedMsg)
+				statsMsg := domain.NewStatsSystemMessage(len(cs.room.GetClients()))
+				cs.notifier.BroadcastToRoom(cs.room, statsMsg)
 
 			case *domain.UserLeftRoom:
 				leftMessage := domain.NewUserLeftSystemMessage(e.Name, cs.clock())

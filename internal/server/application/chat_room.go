@@ -7,6 +7,7 @@ import (
 )
 
 type ChatRoom struct {
+	// TODO: the mutex here actually belongs to ClientRegistry as it is an implementation detail
 	mu      sync.RWMutex
 	id      string
 	name    string

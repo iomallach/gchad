@@ -9,13 +9,29 @@ import (
 type MessageType string
 
 const (
-	SystemUserJoined MessageType = "user_joined"
-	SystemUserLeft   MessageType = "user_left"
-	UserMsg          MessageType = "chat"
+	SystemUserJoined   MessageType = "user_joined"
+	SystemUserLeft     MessageType = "user_left"
+	UserMsg            MessageType = "chat"
+	SystemStatsMessage MessageType = "stats"
 )
 
 type Messager interface {
 	MessageType() MessageType
+}
+
+type StatsSystemMessage struct {
+	ClientsOnline int `json:"clients_online"`
+}
+
+// TODO: session duration not implemented yet
+func NewStatsSystemMessage(clientsOnline int) *StatsSystemMessage {
+	return &StatsSystemMessage{
+		ClientsOnline: clientsOnline,
+	}
+}
+
+func (m *StatsSystemMessage) MessageType() MessageType {
+	return SystemStatsMessage
 }
 
 type UserJoinedSystemMessage struct {
@@ -88,6 +104,8 @@ func UnmarshalMessage(data []byte) (Messager, error) {
 		msg = &UserLeftSystemMessage{}
 	case UserMsg:
 		msg = &UserMessage{}
+	case SystemStatsMessage:
+		msg = &StatsSystemMessage{}
 	default:
 		return nil, fmt.Errorf("unknown message %s of type: %s", envelope.Payload, envelope.Type)
 	}
