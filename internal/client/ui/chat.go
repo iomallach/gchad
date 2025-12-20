@@ -156,6 +156,9 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
+	updatedStatusLine, cmd := c.statusLine.Update(msg)
+	c.statusLine = updatedStatusLine.(StatusLine)
+
 	if !c.ready {
 		c.input = textinput.New()
 		c.input.Width = msg.Width - 2
@@ -169,7 +172,7 @@ func (c Chat) updateOnWindowSizeChange(msg tea.WindowSizeMsg) (Chat, tea.Cmd) {
 		c.input.Width = msg.Width - 2
 	}
 
-	return c, nil
+	return c, cmd
 }
 
 func (c *Chat) updateMessages(msg application.Message) {
