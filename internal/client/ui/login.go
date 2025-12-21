@@ -10,8 +10,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var appLogo = textAboveStyle.Render("\n" +
+	"            _               _\n" +
+	"  __ _  ___| |__   __ _  __| |\n" +
+	" / _` |/ __| '_ \\ / _` |/ _` |\n" +
+	"| (_| | (__| | | | (_| | (_| |\n" +
+	" \\__, |\\___|_| |_|\\__,_|\\__,_|\n" +
+	" |___/\n")
+
 var rootStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.RoundedBorder()).
 	Padding(2)
 
 var textAboveStyle = lipgloss.NewStyle().
@@ -137,8 +144,12 @@ func (l Login) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (l Login) View() string {
+	logo := textAboveStyle.Render(appLogo)
+
 	styledText := textAboveStyle.Render(l.textAboveInput)
-	content := fmt.Sprintf("%s\n\n%s", styledText, l.input.View())
+	inputSection := fmt.Sprintf("%s\n\n%s", styledText, l.input.View())
+
+	content := lipgloss.JoinHorizontal(lipgloss.Center, logo, "    ", inputSection)
 	box := rootStyle.Render(content)
 
 	return lipgloss.Place(l.width, l.height/3, lipgloss.Center, lipgloss.Center, box)
