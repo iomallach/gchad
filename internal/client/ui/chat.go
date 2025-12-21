@@ -69,20 +69,56 @@ func pollForChatMessageCmd(chatClient ChatClient) tea.Cmd {
 	}
 }
 
+// the simplest possible implementation due to low scale
+type MessageRingBuffer struct {
+	buffer  []string
+	maxSize int
+	size    int
+	start   int
+}
+
+func NewMessageRingBuffer(maxSize int) *MessageRingBuffer {
+	return &MessageRingBuffer{
+		buffer:  make([]string, maxSize),
+		maxSize: maxSize,
+	}
+}
+
+func (b *MessageRingBuffer) Add(elem string) {
+	if b.size < b.maxSize {
+		b.buffer[b.size] = elem
+		b.size++
+	} else {
+		b.buffer[b.start] = elem
+		b.start = (b.start + 1) % b.maxSize
+	}
+}
+
+func (b *MessageRingBuffer) Elements() []string {
+	elements := make([]string, b.size)
+
+	for i := 0; i < b.size; i++ {
+		elements[i] = b.buffer[(b.start+i)%b.size]
+	}
+
+	return elements
+}
+
 type Chat struct {
 	input        textinput.Model
 	chatViewPort viewport.Model
 	statusLine   StatusLine
 	ready        bool
 	bindings     ChatScreenKeymap
+	// TODO: I believe it can be removed
 	inputFocused bool
 	chatClient   ChatClient
 	// TODO: this has to be a struct or something that manages the chat properly?
-	messages []string
+	messages *MessageRingBuffer
 }
 
-func InitialChatModel(bindings ChatScreenKeymap, chatClient ChatClient) Chat {
-	return Chat{bindings: bindings, inputFocused: true, chatClient: chatClient, messages: make([]string, 0)}
+func InitialChatModel(bindings ChatScreenKeymap, chatClient ChatClient, messages *MessageRingBuffer) Chat {
+	return Chat{bindings: bindings, inputFocused: true, chatClient: chatClient, messages: messages}
 }
 
 func (c Chat) Init() tea.Cmd {
@@ -137,7 +173,8 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case newMessageReceived:
 		c.updateMessages(msg.msg)
-		c.chatViewPort.SetContent(strings.Join(c.messages, "\n"))
+		c.chatViewPort.SetContent(strings.Join(c.messages.Elements(), "\n"))
+		c.chatViewPort.GotoBottom()
 
 		stats := c.chatClient.Stats()
 		updatedStatusLine, cmd := c.statusLine.Update(stats)
@@ -179,17 +216,17 @@ func (c *Chat) updateMessages(msg domain.Message) {
 		time := timestampStyle.Render(msg.Timestamp.Format("15:04:05"))
 		name := nameStyle.Render(msg.From + ":")
 		text := textStyle.Render(msg.Text)
-		c.messages = append(c.messages, fmt.Sprintf("%s %s %s", time, name, text))
+		c.messages.Add(fmt.Sprintf("%s %s %s", time, name, text))
 
 	case domain.UserJoinedMessage:
 		time := timestampStyle.Render(msg.Timestamp.Format("15:04:05"))
 		text := systemStyle.Render(msg.Name + " joined!")
-		c.messages = append(c.messages, fmt.Sprintf("%s %s", time, text))
+		c.messages.Add(fmt.Sprintf("%s %s", time, text))
 
 	case domain.UserLeftMessage:
 		time := timestampStyle.Render(msg.Timestamp.Format("15:04:05"))
 		text := systemStyle.Render(msg.Name + " left!")
-		c.messages = append(c.messages, fmt.Sprintf("%s %s", time, text))
+		c.messages.Add(fmt.Sprintf("%s %s", time, text))
 	}
 }
 
