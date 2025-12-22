@@ -177,6 +177,15 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return c, tea.Batch(cmd, pollForChatMessageCmd(c.chatClient))
 
+	case newErrorReceived:
+		// TODO: display the error somehow
+		c.input.Reset()
+		c.chatViewPort.SetContent("")
+
+		return c, func() tea.Msg {
+			return disconnected{}
+		}
+
 	case switchToChat:
 		c.statusLine.connectedAs = msg.name
 		return c, pollForChatMessageCmd(c.chatClient)

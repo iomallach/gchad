@@ -164,6 +164,14 @@ func (c *ChatClient) Host() string {
 	return c.url.String()
 }
 
+func (c *ChatClient) communicateError(err error) {
+	select {
+	case c.communications.errors <- err:
+	case <-time.After(time.Millisecond * 50):
+		c.logger.Error("error channel is full, skipping sending an error to the ui", map[string]any{})
+	}
+}
+
 // TODO: at this point, perhaps, really consider abstracting the reads and error handling
 // away from this structure
 func (c *ChatClient) ReadPump() {
@@ -172,6 +180,7 @@ func (c *ChatClient) ReadPump() {
 	for {
 		if err := c.conn.SetReadDeadline(time.Now().Add(time.Second * 90)); err != nil {
 			c.logger.Error(fmt.Sprintf("failed to set read deadline: %s", err.Error()), map[string]any{})
+			c.communicateError(err)
 			return
 		}
 		c.conn.SetPingHandler(func(string) error {
@@ -188,6 +197,7 @@ func (c *ChatClient) ReadPump() {
 		_, msg, err := c.conn.ReadMessage() // the first value is the ws internal code
 		if err != nil {
 			c.logger.Error(fmt.Sprintf("failed to read a message: %s", err.Error()), map[string]any{})
+			c.communicateError(err)
 			return
 		}
 
@@ -245,14 +255,17 @@ func (c *ChatClient) WritePump() {
 
 		if err := c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
 			c.logger.Error(fmt.Sprintf("failed to set write deadline: %s", err.Error()), map[string]any{})
+			c.communicateError(err)
 			return
 		}
 		if err := c.conn.WriteTextMessage(message); err != nil {
 			c.logger.Error(fmt.Sprintf("failed to write message: %s", err.Error()), map[string]any{})
+			c.communicateError(err)
 			return
 		}
 		if err := c.conn.SetWriteDeadline(time.Time{}); err != nil {
 			c.logger.Error(fmt.Sprintf("failed to clear write deadline: %s", err.Error()), map[string]any{})
+			c.communicateError(err)
 			return
 		}
 
