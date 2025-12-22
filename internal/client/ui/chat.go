@@ -108,17 +108,14 @@ type Chat struct {
 	input        textinput.Model
 	chatViewPort viewport.Model
 	statusLine   StatusLine
-	ready        bool
 	bindings     ChatScreenKeymap
-	// TODO: I believe it can be removed
-	inputFocused bool
 	chatClient   ChatClient
-	// TODO: this has to be a struct or something that manages the chat properly?
-	messages *MessageRingBuffer
+	messages     *MessageRingBuffer
+	ready        bool
 }
 
 func InitialChatModel(bindings ChatScreenKeymap, chatClient ChatClient, messages *MessageRingBuffer) Chat {
-	return Chat{bindings: bindings, inputFocused: true, chatClient: chatClient, messages: messages}
+	return Chat{bindings: bindings, chatClient: chatClient, messages: messages}
 }
 
 func (c Chat) Init() tea.Cmd {
@@ -141,7 +138,7 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return disconnected{}
 			}
 		}
-		if c.inputFocused {
+		if c.input.Focused() {
 			switch {
 			case key.Matches(msg, c.bindings.CtrlC):
 				_ = c.chatClient.Disconnect() // swallow the error, we're quitting
@@ -155,7 +152,6 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return c, nil
 
 			case key.Matches(msg, c.bindings.Esc):
-				c.inputFocused = false
 				c.input.Blur()
 
 			default:
@@ -164,7 +160,6 @@ func (c Chat) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			switch {
 			case key.Matches(msg, c.bindings.Esc):
-				c.inputFocused = true
 				c.input.Focus()
 			case key.Matches(msg, c.bindings.CtrlC):
 				return c, tea.Quit

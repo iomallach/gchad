@@ -44,7 +44,6 @@ func main() {
 	)
 	login := ui.InitialLoginModel("Who are you?", ui.DefaultLoginScreenKeymap, chatClient)
 	chat := ui.InitialChatModel(ui.DefaultChatScreenKeymap, chatClient, ui.NewMessageRingBuffer(100))
-	// TODO: pass a logger instead of nils
 	model := ui.InitialAppModel(login, chat, chatClient)
 	program := tea.NewProgram(model)
 	if _, err := program.Run(); err != nil {

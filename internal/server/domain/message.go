@@ -23,7 +23,6 @@ type StatsSystemMessage struct {
 	ClientsOnline int `json:"clients_online"`
 }
 
-// TODO: session duration not implemented yet
 func NewStatsSystemMessage(clientsOnline int) *StatsSystemMessage {
 	return &StatsSystemMessage{
 		ClientsOnline: clientsOnline,
