@@ -68,16 +68,26 @@ func (url *Url) String() string {
 	return fmt.Sprintf("%s?%s", subUrl, url.queryParam.String())
 }
 
+type Communications struct {
+	recv   chan domain.Message     // inbound messages
+	send   chan domain.ChatMessage // outbound messages
+	errors chan error
+}
+
+func NewCommunications(recv chan domain.Message, send chan domain.ChatMessage, errors chan error) *Communications {
+	return &Communications{
+		recv,
+		send,
+		errors,
+	}
+}
+
 type ChatClient struct {
 	conn   network.Connection
 	dialer Dialer
 	logger logging.Logger
 
-	// TODO: wrap in an own structure to declutter this definiton?
-	recv   chan domain.Message
-	errors chan error
-
-	send chan domain.ChatMessage
+	communications *Communications
 
 	name      string
 	url       Url
@@ -86,20 +96,16 @@ type ChatClient struct {
 
 func NewChatClient(
 	dialer Dialer,
-	recv chan domain.Message,
-	send chan domain.ChatMessage,
-	errors chan error,
+	communications *Communications,
 	logger logging.Logger,
 	url Url,
 ) *ChatClient {
 	return &ChatClient{
-		dialer:    dialer,
-		logger:    logger,
-		recv:      recv,
-		errors:    errors,
-		send:      send,
-		url:       url,
-		chatStats: domain.NewChatStats(),
+		dialer:         dialer,
+		logger:         logger,
+		communications: communications,
+		url:            url,
+		chatStats:      domain.NewChatStats(),
 	}
 }
 
@@ -130,7 +136,7 @@ func (c *ChatClient) Disconnect() error {
 
 func (c *ChatClient) SendMessage(message string) {
 	select {
-	case c.send <- domain.ChatMessage{
+	case c.communications.send <- domain.ChatMessage{
 		From:      c.name,
 		Timestamp: time.Now(),
 		Text:      message,
@@ -142,11 +148,11 @@ func (c *ChatClient) SendMessage(message string) {
 }
 
 func (c *ChatClient) InboundMessages() <-chan domain.Message {
-	return c.recv
+	return c.communications.recv
 }
 
 func (c *ChatClient) Errors() <-chan error {
-	return c.errors
+	return c.communications.errors
 }
 
 func (c *ChatClient) SetName(name string) {
@@ -209,7 +215,7 @@ func (c *ChatClient) ReadPump() {
 		}
 
 		select {
-		case c.recv <- message:
+		case c.communications.recv <- message:
 			c.logger.Debug("new message sent to ui", map[string]any{})
 		case <-time.After(time.Millisecond * 50):
 			c.logger.Error("message channel is full, skipping sending message to ui", map[string]any{})
@@ -220,7 +226,7 @@ func (c *ChatClient) ReadPump() {
 func (c *ChatClient) WritePump() {
 	defer c.conn.Close()
 
-	for msg := range c.send {
+	for msg := range c.communications.send {
 		data, err := json.Marshal(msg)
 		if err != nil {
 			c.logger.Error(fmt.Sprintf("failed to marshall the message: %s with %s", data, err.Error()), map[string]any{})

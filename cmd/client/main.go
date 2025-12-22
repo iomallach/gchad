@@ -34,11 +34,14 @@ func main() {
 		8080,
 		infrastructure.NewQueryParam("name", ""),
 	)
-	chatClient := infrastructure.NewChatClient(
-		dialer,
+	communications := infrastructure.NewCommunications(
 		make(chan domain.Message, 256),
 		make(chan domain.ChatMessage, 256),
 		make(chan error, 256),
+	)
+	chatClient := infrastructure.NewChatClient(
+		dialer,
+		communications,
 		logger,
 		url,
 	)
