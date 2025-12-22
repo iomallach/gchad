@@ -1,14 +1,10 @@
 package application
 
 import (
-	"sync"
-
 	"github.com/iomallach/gchad/internal/server/domain"
 )
 
 type ChatRoom struct {
-	// TODO: the mutex here actually belongs to ClientRegistry as it is an implementation detail
-	mu      sync.RWMutex
 	id      string
 	name    string
 	clients *ClientRegistry
@@ -16,7 +12,6 @@ type ChatRoom struct {
 
 func NewChatRoom(id string, name string, clients *ClientRegistry) *ChatRoom {
 	return &ChatRoom{
-		mu:      sync.RWMutex{},
 		id:      id,
 		name:    name,
 		clients: clients,
@@ -32,18 +27,12 @@ func (cr *ChatRoom) Name() string {
 }
 
 func (cr *ChatRoom) LetClientIn(client *domain.Client) *domain.UserJoinedRoom {
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
-
 	cr.clients.AddClient(client)
 
 	return domain.NewUserJoinedRoomEvent(client.Name())
 }
 
 func (cr *ChatRoom) LetClientOut(clientId string) *domain.UserLeftRoom {
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
-
 	// TODO: null pointer exception danger
 	client := cr.clients.GetClient(clientId)
 	cr.clients.RemoveClient(clientId)
@@ -52,8 +41,5 @@ func (cr *ChatRoom) LetClientOut(clientId string) *domain.UserLeftRoom {
 }
 
 func (cr *ChatRoom) GetClients() []*domain.Client {
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
-
 	return cr.clients.GetAllClients()
 }
