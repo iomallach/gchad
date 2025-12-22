@@ -84,42 +84,35 @@ func (s StatusLine) View() string {
 	leftWidth := lipgloss.Width(leftSection) + lipgloss.Width(leftSectionRightSeparator)
 	middleWidth := lipgloss.Width(middleSection) + lipgloss.Width(middleSectionLeftSeparator) + lipgloss.Width(middleSectionRightSeparator)
 	rightWidth := lipgloss.Width(rightSectionLeftSeparator) + lipgloss.Width(rightSection)
+	fullContentWidth := leftWidth + middleWidth + rightWidth
+	remainingSpace := s.width - fullContentWidth
 
-	// spacing required
-	if s.width > 0 {
-		totalContentWidth := leftWidth + middleWidth + rightWidth
-		remainingSpace := s.width - totalContentWidth
+	switch {
+	case s.width < fullContentWidth && s.width >= lipgloss.Width(leftSection):
+		return statusRootStyle.Width(s.width).Render(leftSection)
 
-		if remainingSpace > 0 {
-			// split remaining space: half before middle, half after middle
-			leftPadding := remainingSpace / 2
-			rightPadding := remainingSpace - leftPadding
+	case s.width > 0 && remainingSpace >= 0:
+		// split remaining space: half before middle, half after middle
+		leftPadding := remainingSpace / 2
+		rightPadding := remainingSpace - leftPadding
 
-			// create padding with root background
-			leftGap := statusRootStyle.Render(lipgloss.NewStyle().Width(leftPadding).Render(""))
-			rightGap := statusRootStyle.Render(lipgloss.NewStyle().Width(rightPadding).Render(""))
+		// create padding with root background
+		leftGap := statusRootStyle.Render(lipgloss.NewStyle().Width(leftPadding).Render(""))
+		rightGap := statusRootStyle.Render(lipgloss.NewStyle().Width(rightPadding).Render(""))
 
-			return statusRootStyle.Render(
-				leftSection +
-					leftSectionRightSeparator +
-					leftGap +
-					middleSectionLeftSeparator +
-					middleSection +
-					middleSectionRightSeparator +
-					rightGap +
-					rightSectionLeftSeparator +
-					rightSection,
-			)
-		}
+		return statusRootStyle.Width(s.width).Render(
+			leftSection +
+				leftSectionRightSeparator +
+				leftGap +
+				middleSectionLeftSeparator +
+				middleSection +
+				middleSectionRightSeparator +
+				rightGap +
+				rightSectionLeftSeparator +
+				rightSection,
+		)
+
+	default:
+		return statusRootStyle.Width(s.width).Render("")
 	}
-
-	// fallback if width not set or content too wide
-	return statusRootStyle.Render(
-		leftSection +
-			leftSectionRightSeparator + " " +
-			middleSectionLeftSeparator +
-			middleSection + " " +
-			rightSectionLeftSeparator +
-			rightSection,
-	)
 }
